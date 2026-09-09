@@ -1,0 +1,3942 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Z-Book</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1877f2">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+  body { background-color: #f0f2f5; min-height: 100vh; }
+
+  /* ---------- Splash Screen ---------- */
+  #splash-screen {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: #ffffff; display: flex; flex-direction: column;
+    justify-content: space-between; align-items: center; padding: 60px 0;
+    z-index: 9999; animation: fadeOut 0.8s ease-in-out 2.5s forwards;
+  }
+  .brand-logo { font-size: 45px; font-weight: bold; color: #1877f2; margin: auto 0; animation: zoomIn 1.2s ease-in-out; }
+  .creator-tag { font-size: 13px; color: #65676b; letter-spacing: 0.5px; }
+  .creator-tag span { color: #1877f2; font-weight: bold; }
+  @keyframes zoomIn { 0% { opacity: 0; transform: scale(0.7); } 100% { opacity: 1; transform: scale(1); } }
+  @keyframes fadeOut { to { opacity: 0; visibility: hidden; } }
+
+  /* ---------- Views container ---------- */
+  .view { display: none; min-height: 100vh; }
+  .view.active { display: block; }
+
+  /* ---------- Login View ---------- */
+  #view-login { display: none; justify-content: center; align-items: center; min-height: 100vh; }
+  #view-login.active { display: flex; }
+  .login-container { background: #ffffff; padding: 25px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 90%; max-width: 400px; text-align: center; }
+  .login-container h2 { color: #1877f2; margin-bottom: 20px; font-size: 28px; }
+  .input-box { width: 100%; padding: 14px; margin: 8px 0; border: 1px solid #dddfe2; border-radius: 6px; font-size: 15px; outline: none; }
+  .input-box:focus { border-color: #1877f2; }
+  .btn-login { width: 100%; background: #1877f2; color: white; padding: 12px; border: none; border-radius: 6px; font-size: 18px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+  .btn-login:disabled { opacity: 0.6; cursor: default; }
+  .forgot-pass { display: block; margin: 15px 0; color: #1877f2; text-decoration: none; font-size: 14px; }
+  .divider { margin: 20px 0; border-bottom: 1px solid #dadde1; }
+  .btn-register { background: #42b72a; color: white; padding: 12px 20px; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; width: 100%; }
+  .btn-register:disabled { opacity: 0.6; cursor: default; }
+  .login-error { color: #e41e3f; font-size: 13px; margin-top: 8px; min-height: 16px; }
+  .login-hint { color: #65676b; font-size: 12px; margin-top: 10px; }
+
+  /* ---------- Shared: Navbar / Bottom nav ---------- */
+  .navbar { background: #ffffff; padding: 12px 15px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1); z-index: 100; }
+  .logo { font-size: 24px; font-weight: bold; color: #1877f2; }
+  .nav-icons span { font-size: 20px; margin-left: 15px; cursor: pointer; }
+  .bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; background: #fff; display: flex; justify-content: space-around; padding: 10px 0; border-top: 1px solid #ddd; z-index: 100; }
+  .bottom-nav a { text-decoration: none; color: #65676b; font-size: 12px; text-align: center; cursor: pointer; }
+  .bottom-nav a.active { color: #1877f2; font-weight: bold; }
+
+  /* ---------- Home View ---------- */
+  #view-home { padding-bottom: 60px; }
+  .create-post { background: #fff; margin: 10px; padding: 15px; border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+  .create-post textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 10px; outline: none; margin-bottom: 10px; resize: none; font-family: inherit; font-size: 14px; min-height: 44px; }
+  .media-preview { position: relative; margin-bottom: 10px; display: none; }
+  .media-preview img, .media-preview video { width: 100%; max-height: 260px; object-fit: cover; border-radius: 8px; display: block; }
+  .media-preview .remove-media { position: absolute; top: 6px; right: 6px; background: rgba(0,0,0,0.6); color: #fff; border: none; border-radius: 50%; width: 26px; height: 26px; cursor: pointer; font-size: 14px; }
+  .post-actions { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .post-actions label, .post-actions button { background: #e4e6eb; border: none; padding: 8px 12px; border-radius: 5px; font-weight: bold; cursor: pointer; font-size: 13px; }
+  .btn-submit { background: #1877f2 !important; color: white; }
+  .btn-submit:disabled { opacity: 0.6; cursor: default; }
+  .upload-progress { font-size: 12px; color: #1877f2; margin-top: 6px; display: none; }
+
+  .feed-post { background: #fff; margin: 10px; padding: 15px; border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+  .post-header { display: flex; align-items: center; margin-bottom: 10px; }
+  .avatar { width: 40px; height: 40px; background: #1877f2; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; margin-right: 10px; position: relative; flex-shrink: 0; overflow: hidden; }
+  .avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; display: block; }
+  .avatar-edit-wrap { position: relative; display: inline-block; }
+  .avatar-edit-btn { position: absolute; bottom: 6px; right: -2px; width: 26px; height: 26px; background: #1877f2; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; cursor: pointer; border: 2px solid #fff; }
+  .user-info { flex: 1; }
+  .user-info h4 { font-size: 15px; color: #050505; }
+  .user-info p { font-size: 12px; color: #65676b; }
+  .post-content { font-size: 14px; margin-bottom: 12px; white-space: pre-wrap; word-break: break-word; }
+  .post-media { width: 100%; border-radius: 8px; margin-bottom: 12px; overflow: hidden; background: #000; }
+  .post-media img, .post-media video { width: 100%; max-height: 420px; object-fit: contain; display: block; background: #000; }
+  .post-footer { display: flex; justify-content: space-around; border-top: 1px solid #e4e6eb; padding-top: 8px; font-size: 14px; color: #65676b; font-weight: bold; }
+  .post-footer > div { cursor: pointer; padding: 4px 8px; border-radius: 5px; user-select: none; }
+  .post-footer > div:active { background: #f0f2f5; }
+  .post-footer .liked { color: #1877f2; }
+  .post-footer .delete-btn { color: #e41e3f; }
+  .comments-section { display: none; margin-top: 10px; border-top: 1px solid #e4e6eb; padding-top: 10px; }
+  .comments-section.open { display: block; }
+  .comment-item { display: flex; margin-bottom: 8px; }
+  .comment-item .avatar { width: 28px; height: 28px; font-size: 12px; margin-right: 8px; }
+  .comment-bubble { background: #f0f2f5; border-radius: 14px; padding: 6px 12px; font-size: 13px; flex: 1; }
+  .comment-bubble b { display: block; font-size: 12px; color: #050505; }
+  .comment-input-row { display: flex; gap: 8px; margin-top: 8px; }
+  .comment-input-row input { flex: 1; padding: 8px 12px; border: 1px solid #ddd; border-radius: 16px; outline: none; font-size: 13px; }
+  .comment-input-row button { background: #1877f2; color: #fff; border: none; border-radius: 16px; padding: 8px 14px; font-size: 13px; cursor: pointer; }
+  .feed-empty { text-align: center; color: #65676b; padding: 30px; font-size: 13px; }
+  .post-edited-label { font-size: 11px; color: #65676b; }
+  .post-edit-form textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; outline: none; font-family: inherit; font-size: 14px; resize: none; margin-bottom: 12px; }
+  .post-edit-actions { display: flex; gap: 8px; margin-bottom: 12px; }
+  .post-edit-actions button { flex: 1; padding: 8px; border: none; border-radius: 6px; font-weight: bold; font-size: 13px; cursor: pointer; }
+  .post-edit-save { background: #1877f2; color: #fff; }
+  .post-edit-cancel { background: #e4e6eb; color: #050505; }
+  .post-footer .report-btn { color: #e41e3f; }
+
+  /* ---------- Post rules notice ---------- */
+  .post-rules-notice { font-size: 12px; color: #65676b; margin: 2px 0 10px; line-height: 1.5; }
+  .media-consent-row { display: none; align-items: flex-start; gap: 8px; margin-bottom: 10px; font-size: 12px; color: #050505; }
+  .media-consent-row.show { display: flex; }
+  .media-consent-row input { margin-top: 2px; flex-shrink: 0; }
+
+  /* ---------- Report Modal ---------- */
+  .report-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; justify-content: center; align-items: center; }
+  .report-overlay.show { display: flex; }
+  .report-box { background: #fff; width: 90%; max-width: 360px; border-radius: 10px; padding: 20px; }
+  .report-box h3 { color: #050505; font-size: 17px; margin-bottom: 14px; }
+  .report-reason { display: block; width: 100%; text-align: left; background: #f0f2f5; border: none; border-radius: 6px; padding: 12px; margin-bottom: 8px; font-size: 14px; cursor: pointer; }
+  .report-reason.selected { background: #e7f0ff; border: 1px solid #1877f2; color: #1877f2; font-weight: bold; }
+  .report-actions { display: flex; gap: 8px; margin-top: 12px; }
+  .report-actions button { flex: 1; padding: 10px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
+  .report-submit { background: #1877f2; color: #fff; }
+  .report-submit:disabled { opacity: 0.6; cursor: default; }
+  .report-cancel { background: #e4e6eb; color: #050505; }
+  .report-msg { font-size: 12px; color: #e41e3f; min-height: 14px; margin-top: 6px; }
+
+  /* ---------- Reels View ---------- */
+  #view-reels.active { background: #000; }
+  .reels-header { position: fixed; top: 0; left: 0; width: 100%; padding: 14px 16px; display: flex; justify-content: space-between; align-items: center; z-index: 150; background: linear-gradient(rgba(0,0,0,0.55), transparent); color: #fff; pointer-events: none; }
+  .reels-header h2 { font-size: 18px; font-weight: bold; }
+  .reels-header span { font-size: 22px; cursor: pointer; pointer-events: auto; }
+  .reels-container { height: 100vh; overflow-y: scroll; scroll-snap-type: y mandatory; background: #000; -webkit-overflow-scrolling: touch; }
+  .reel-item { position: relative; height: 100vh; scroll-snap-align: start; display: flex; align-items: center; justify-content: center; overflow: hidden; background: #000; }
+  .reel-item video { width: 100%; height: 100%; object-fit: contain; background: #000; }
+  .reel-empty { color: #ddd; text-align: center; padding: 80px 20px; font-size: 14px; }
+  .reel-info { position: absolute; left: 14px; right: 90px; bottom: 90px; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.8); }
+  .reel-info .reel-author { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-weight: bold; font-size: 14px; }
+  .reel-info .reel-author .avatar { width: 30px; height: 30px; font-size: 13px; flex-shrink: 0; }
+  .reel-info .reel-caption { font-size: 13px; line-height: 1.4; white-space: pre-wrap; word-break: break-word; }
+  .reel-actions { position: absolute; right: 10px; bottom: 90px; display: flex; flex-direction: column; align-items: center; gap: 18px; color: #fff; z-index: 60; }
+  .reel-actions > div { text-align: center; font-size: 24px; cursor: pointer; text-shadow: 0 1px 3px rgba(0,0,0,0.8); }
+  .reel-actions > div span { display: block; font-size: 11px; font-weight: bold; margin-top: 2px; }
+  .reel-actions .reel-like.liked { color: #e41e3f; }
+  .reel-mute-btn { position: absolute; top: 70px; right: 14px; color: #fff; font-size: 18px; background: rgba(0,0,0,0.4); width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 60; }
+
+  .reel-comments-panel { position: absolute; left: 0; right: 0; bottom: 0; max-height: 60%; background: #fff; border-radius: 16px 16px 0 0; display: none; flex-direction: column; z-index: 70; }
+  .reel-comments-panel.open { display: flex; }
+  .reel-comments-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 15px; border-bottom: 1px solid #eee; font-weight: bold; color: #050505; flex-shrink: 0; }
+  .reel-comments-header span { cursor: pointer; font-size: 18px; color: #65676b; }
+  .reel-comments-list { overflow-y: auto; padding: 10px 15px; flex: 1; }
+  .reel-comments-input-row { display: flex; gap: 8px; padding: 10px 15px; border-top: 1px solid #eee; flex-shrink: 0; }
+  .reel-comments-input-row input { flex: 1; padding: 8px 12px; border: 1px solid #ddd; border-radius: 16px; outline: none; font-size: 13px; }
+  .reel-comments-input-row button { background: #1877f2; color: #fff; border: none; border-radius: 16px; padding: 8px 14px; font-size: 13px; cursor: pointer; }
+
+  /* ---------- Reel Upload Modal ---------- */
+  .reel-upload-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 2000; justify-content: center; align-items: center; }
+  .reel-upload-overlay.show { display: flex; }
+  .reel-upload-box { background: #fff; width: 90%; max-width: 380px; border-radius: 10px; padding: 20px; max-height: 85vh; overflow-y: auto; }
+  .reel-upload-box h3 { color: #050505; font-size: 17px; margin-bottom: 14px; }
+  .reel-upload-box textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; outline: none; font-family: inherit; font-size: 14px; resize: none; margin: 10px 0; }
+  .reel-video-preview { display: none; margin-bottom: 10px; }
+  .reel-video-preview.show { display: block; }
+  .reel-video-preview video { width: 100%; max-height: 260px; border-radius: 8px; background: #000; display: block; }
+  .reel-pick-btn { display: inline-block; background: #e4e6eb; border: none; padding: 10px 16px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 13px; }
+  .reel-consent-row { display: flex; align-items: flex-start; gap: 8px; margin: 12px 0; font-size: 12px; color: #050505; }
+  .reel-consent-row input { margin-top: 2px; flex-shrink: 0; }
+  .reel-upload-actions { display: flex; gap: 8px; margin-top: 8px; }
+  .reel-upload-actions button { flex: 1; padding: 10px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
+  .reel-upload-submit { background: #1877f2; color: #fff; }
+  .reel-upload-submit:disabled { opacity: 0.6; cursor: default; }
+  .reel-upload-cancel { background: #e4e6eb; color: #050505; }
+  .reel-upload-error { color: #e41e3f; font-size: 12px; min-height: 14px; margin-top: 6px; }
+  .reel-upload-progress { font-size: 12px; color: #1877f2; margin-top: 6px; display: none; }
+
+  /* ---------- Search bar ---------- */
+  .search-bar { display: none; background: #fff; margin: 10px 10px 0; padding: 10px; border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); align-items: center; gap: 8px; }
+  .search-bar.show { display: flex; }
+  .search-bar input { flex: 1; padding: 10px 12px; border: 1px solid #ddd; border-radius: 16px; outline: none; font-size: 14px; }
+  .search-bar button { background: #e4e6eb; border: none; border-radius: 50%; width: 32px; height: 32px; cursor: pointer; font-size: 13px; flex-shrink: 0; }
+
+  /* ---------- Chat View ---------- */
+  #view-chat { padding-bottom: 60px; background: #ffffff; min-height: 100vh; }
+  .chat-header { background: #fff; padding: 15px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e4e6eb; position: sticky; top: 0; }
+  .chat-header h2 { color: #1877f2; font-size: 22px; }
+  .chat-actions span { font-size: 20px; margin-left: 15px; cursor: pointer; }
+  .chat-list { list-style: none; }
+  .chat-item { display: flex; align-items: center; padding: 12px 15px; border-bottom: 1px solid #f0f2f5; cursor: pointer; }
+  .chat-item:active { background: #f0f2f5; }
+  .chat-item .avatar { width: 48px; height: 48px; font-size: 18px; }
+  .online-dot { width: 12px; height: 12px; background: #31a24c; border-radius: 50%; position: absolute; bottom: 2px; right: 2px; border: 2px solid white; }
+  .chat-info { flex: 1; }
+  .chat-info h4 { font-size: 16px; color: #050505; margin-bottom: 3px; }
+  .chat-info p { font-size: 13px; color: #65676b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .chat-time { font-size: 11px; color: #65676b; }
+
+  /* ---------- Conversation (real messenger) View ---------- */
+  #view-conversation.active { display: flex; flex-direction: column; min-height: 100vh; background: #fff; }
+  #view-group-chat.active { display: flex; flex-direction: column; min-height: 100vh; background: #fff; }
+  .conv-header-left { display: flex; align-items: center; gap: 10px; }
+  .conv-back { font-size: 20px; cursor: pointer; }
+  .conv-header-left h2 { font-size: 17px; color: #050505; }
+  .messages-container { flex: 1; overflow-y: auto; padding: 12px; padding-bottom: 72px; }
+  .message-row { display: flex; margin-bottom: 10px; }
+  .message-row.own { justify-content: flex-end; }
+  .msg-delete-btn { align-self: center; color: #65676b; font-size: 13px; cursor: pointer; padding: 4px 6px; opacity: 0.7; }
+  .msg-delete-btn:active { opacity: 1; }
+  .message-bubble { max-width: 72%; padding: 8px 13px; border-radius: 16px; font-size: 14px; word-break: break-word; line-height: 1.4; }
+  .message-row.own .message-bubble { background: #1877f2; color: #fff; border-bottom-right-radius: 4px; }
+  .message-row.other .message-bubble { background: #e4e6eb; color: #050505; border-bottom-left-radius: 4px; }
+  .message-input-row { position: fixed; bottom: 0; left: 0; width: 100%; background: #fff; padding: 10px; display: flex; gap: 8px; align-items: center; border-top: 1px solid #e4e6eb; box-sizing: border-box; }
+  .message-input-row input[type="text"] { flex: 1; padding: 10px 14px; border: 1px solid #ddd; border-radius: 20px; outline: none; font-size: 14px; }
+  .message-input-row button { background: #1877f2; color: #fff; border: none; border-radius: 50%; width: 42px; height: 42px; font-size: 16px; cursor: pointer; flex-shrink: 0; }
+  .message-input-row button:disabled { opacity: 0.6; }
+  .attach-btn-label { background: #e4e6eb; color: #050505; border-radius: 50%; width: 42px; height: 42px; font-size: 18px; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; }
+  .chat-list-empty { padding: 30px 20px; text-align: center; color: #65676b; font-size: 13px; }
+
+  /* ---------- Chat media preview (before sending) ---------- */
+  .chat-media-preview { position: fixed; bottom: 62px; left: 0; width: 100%; background: #fff; padding: 8px 10px; border-top: 1px solid #e4e6eb; box-sizing: border-box; display: none; }
+  .chat-media-preview.show { display: flex; align-items: center; gap: 10px; }
+  .chat-media-preview img, .chat-media-preview video { height: 60px; max-width: 90px; border-radius: 8px; object-fit: cover; }
+  .chat-media-preview .remove-chat-media { background: #e4e6eb; border: none; border-radius: 50%; width: 26px; height: 26px; cursor: pointer; font-size: 13px; }
+  .chat-upload-progress { font-size: 12px; color: #1877f2; }
+  .chat-media-preview audio { height: 40px; max-width: 220px; }
+
+  /* ---------- Voice recording ---------- */
+  .voice-record-btn.recording { background: #e41e3f; color: #fff; }
+  .voice-record-bar { position: fixed; bottom: 62px; left: 0; width: 100%; background: #fff; padding: 10px; border-top: 1px solid #e4e6eb; box-sizing: border-box; display: none; align-items: center; gap: 8px; }
+  .voice-record-bar.show { display: flex; }
+  .rec-dot { width: 10px; height: 10px; border-radius: 50%; background: #e41e3f; animation: recPulse 1s infinite; flex-shrink: 0; }
+  @keyframes recPulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+  .record-timer-text { font-size: 13px; font-weight: bold; color: #050505; }
+  .record-hint { font-size: 13px; color: #65676b; flex: 1; }
+  .voice-cancel-btn, .voice-stop-btn { border: none; border-radius: 16px; padding: 7px 12px; font-size: 12px; cursor: pointer; }
+  .voice-cancel-btn { background: #e4e6eb; color: #050505; }
+  .voice-stop-btn { background: #1877f2; color: #fff; }
+
+  /* ---------- Media inside message bubble ---------- */
+  .message-bubble.has-media { padding: 4px; background: transparent !important; }
+  .message-bubble.has-media img, .message-bubble.has-media video { max-width: 220px; max-height: 260px; border-radius: 12px; display: block; }
+  .message-bubble.has-media audio { width: 220px; display: block; }
+  .message-row.own .message-bubble.has-media audio { background: #1877f2; border-radius: 16px; }
+  .message-row.other .message-bubble.has-media audio { background: #e4e6eb; border-radius: 16px; }
+  .message-bubble .msg-media-caption { padding: 6px 9px 2px; }
+  .message-row.own .message-bubble.has-media .msg-media-caption { background: #1877f2; color: #fff; border-radius: 0 0 12px 12px; }
+  .message-row.other .message-bubble.has-media .msg-media-caption { background: #e4e6eb; color: #050505; border-radius: 0 0 12px 12px; }
+
+  /* ---------- Follow feature ---------- */
+  .post-header.clickable { cursor: pointer; }
+  .follow-counts { display: flex; justify-content: center; gap: 24px; margin: 10px 0 16px; }
+  .follow-counts div { text-align: center; cursor: default; }
+  .follow-counts b { display: block; font-size: 17px; color: #050505; }
+  .follow-counts span { font-size: 12px; color: #65676b; }
+  .btn-follow { background: #1877f2; color: #fff; border: none; padding: 10px 22px; border-radius: 6px; font-weight: bold; font-size: 14px; cursor: pointer; margin-left: 8px; }
+  .btn-follow.following { background: #e4e6eb; color: #050505; }
+  .btn-follow:disabled { opacity: 0.6; cursor: default; }
+  .conv-back-userprofile { font-size: 20px; cursor: pointer; margin-right: 8px; }
+
+  /* ---------- Notifications ---------- */
+  .notif-badge { position: absolute; top: -4px; right: -8px; background: #e41e3f; color: #fff; font-size: 10px; font-weight: bold; min-width: 16px; height: 16px; border-radius: 8px; display: flex; align-items: center; justify-content: center; padding: 0 3px; }
+  .notif-item { display: flex; align-items: center; padding: 12px 15px; border-bottom: 1px solid #f0f2f5; cursor: pointer; gap: 10px; }
+  .notif-item:active { background: #f0f2f5; }
+  .notif-item.unread { background: #eaf3ff; }
+  .notif-item .avatar { width: 42px; height: 42px; font-size: 16px; flex-shrink: 0; }
+  .notif-text { flex: 1; font-size: 14px; color: #050505; line-height: 1.4; }
+  .notif-text b { font-weight: bold; }
+  .notif-time { font-size: 11px; color: #65676b; margin-top: 2px; }
+  .chat-item .chat-unread-badge { background: #1877f2; color: #fff; font-size: 11px; font-weight: bold; min-width: 18px; height: 18px; border-radius: 9px; display: flex; align-items: center; justify-content: center; padding: 0 4px; margin-top: 4px; margin-left: auto; }
+  .chat-info p.unread-preview { color: #050505; font-weight: bold; }
+  .seen-label { font-size: 11px; color: #65676b; text-align: right; margin: -6px 4px 8px 0; }
+
+  /* ---------- Group chat ---------- */
+  .member-check-item { display: flex; align-items: center; gap: 10px; padding: 10px 15px; border-bottom: 1px solid #f0f2f5; cursor: pointer; }
+  .member-check-item input[type="checkbox"] { width: 18px; height: 18px; flex-shrink: 0; }
+  .group-msg-sender { font-size: 11px; color: #65676b; margin: 0 0 2px 4px; }
+  .message-row.other .group-msg-sender { text-align: left; }
+</style>
+</head>
+<body>
+
+  <!-- Splash Screen -->
+  <div id="splash-screen">
+    <div class="brand-logo">Z-Book</div>
+    <div class="creator-tag">Created by <span>Tanjil</span></div>
+  </div>
+
+  <!-- ===================== LOGIN VIEW ===================== -->
+  <div id="view-login" class="view active">
+    <div class="login-container">
+      <h2>Z-Book</h2>
+      <form id="loginForm">
+        <input id="loginEmail" type="email" class="input-box" placeholder="ইমেইল" required>
+        <input id="loginPass" type="password" class="input-box" placeholder="পাসওয়ার্ড" required>
+        <button type="submit" class="btn-login" id="btnLoginSubmit">লগইন করুন</button>
+        <a href="#" class="forgot-pass" id="btnForgotPass">পাসওয়ার্ড ভুলে গেছেন?</a>
+        <div class="divider"></div>
+        <button type="button" id="btnRegister" class="btn-register">নতুন অ্যাকাউন্ট তৈরি করুন</button>
+        <div id="loginError" class="login-error"></div>
+        <div class="login-hint">অ্যাকাউন্ট না থাকলে "নতুন অ্যাকাউন্ট তৈরি করুন" চাপুন — একই ইমেইল/পাসওয়ার্ড দিয়ে সরাসরি একাউন্ট তৈরি হয়ে লগইন হয়ে যাবে।</div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ===================== HOME VIEW ===================== -->
+  <div id="view-home" class="view">
+    <div class="navbar">
+      <div class="logo">Z-Book</div>
+      <div class="nav-icons">
+        <span id="btnSearchToggle" title="সার্চ">🔍</span>
+        <span id="btnNotifications" title="নোটিফিকেশন" style="position:relative;">🔔<span id="notifBadge" class="notif-badge" style="display:none;"></span></span>
+        <span id="btnLogout" title="লগআউট">🚪</span>
+      </div>
+    </div>
+
+    <div class="search-bar" id="searchBar">
+      <input type="text" id="searchInput" placeholder="নাম বা পোস্টের লেখা দিয়ে খুঁজুন...">
+      <button type="button" id="btnSearchClear">✕</button>
+    </div>
+
+    <div id="emailVerifyBanner" style="display:none; background:#fff3cd; color:#664d03; padding:10px 15px; font-size:13px; border-bottom:1px solid #ffe69c;">
+      আপনার ইমেইল এখনো ভেরিফাই করা হয়নি। ইনবক্স চেক করুন, অথবা
+      <button type="button" id="btnResendVerify" style="background:none; border:none; color:#1877f2; text-decoration:underline; cursor:pointer; padding:0; font-size:13px;">লিংক আবার পাঠান</button>।
+    </div>
+
+    <div class="create-post">
+      <!-- UX FIX: maxlength values here (and on comment/message inputs
+           below) mirror the server-side length limits in the Firestore
+           rules (post/edit text 5000, comment 1000, message 4000), so
+           the user hits a visible character limit in the browser
+           instead of typing past it and getting a confusing generic
+           error when the write is rejected server-side. -->
+      <textarea id="postText" placeholder="মনে কী আছে বলুন?" rows="2" maxlength="5000"></textarea>
+      <div class="media-preview" id="mediaPreview">
+        <button type="button" class="remove-media" id="removeMedia">✕</button>
+        <div id="mediaPreviewInner"></div>
+      </div>
+      <div class="media-consent-row" id="mediaConsentRow">
+        <input type="checkbox" id="mediaConsentCheck">
+        <label for="mediaConsentCheck">আমি নিশ্চিত করছি এই ছবি/ভিডিওতে ১৮+, নগ্নতা বা যৌন কনটেন্ট নেই।</label>
+      </div>
+      <div class="post-actions">
+        <label for="postMediaInput">📷 ছবি/ভিডিও</label>
+        <input type="file" id="postMediaInput" accept="image/*,video/*" style="display:none;">
+        <button type="button" class="btn-submit" id="btnSubmitPost">পোস্ট</button>
+      </div>
+      <div class="upload-progress" id="uploadProgress">আপলোড হচ্ছে...</div>
+      <div class="post-rules-notice">🚫 ১৮+, নগ্ন বা যৌন কনটেন্ট পোস্ট করা এই অ্যাপে সম্পূর্ণ নিষেধ। এমন পোস্ট দেখলে যে কেউ রিপোর্ট করতে পারবে এবং তা রিভিউ করে সরিয়ে ফেলা হবে।</div>
+    </div>
+
+    <div id="feedContainer">
+      <div class="feed-empty" id="feedEmpty">এখনো কোনো পোস্ট নেই — প্রথম পোস্টটি করুন!</div>
+    </div>
+    <div class="feed-empty" id="searchNoResult" style="display:none;">কোনো পোস্ট পাওয়া যায়নি।</div>
+    <div style="padding:10px; text-align:center;">
+      <button type="button" id="btnLoadMorePosts" class="btn-login" style="display:none; width:auto; padding:10px 24px;">আরও পোস্ট দেখুন</button>
+    </div>
+
+    <div class="bottom-nav">
+      <a class="nav-link active" data-view="home">🏠<br>হোম</a>
+      <a class="nav-link" data-view="chat">💬<br>মেসেজ</a>
+      <a class="nav-link" data-view="reels">🎬<br>রিলস</a>
+      <a class="calls-tab">📞<br>কলস</a>
+      <a class="nav-link" data-view="profile">👤<br>প্রোফাইল</a>
+    </div>
+  </div>
+
+  <!-- ===================== REELS VIEW ===================== -->
+  <div id="view-reels" class="view">
+    <div class="reels-header">
+      <h2>রিলস</h2>
+      <span id="btnOpenReelUpload" title="রিল আপলোড করুন">🎥➕</span>
+    </div>
+    <div class="reels-container" id="reelsContainer">
+      <div class="reel-empty" id="reelsEmpty">এখনো কোনো রিল নেই — প্রথম রিলটি আপলোড করুন!</div>
+    </div>
+
+    <div class="bottom-nav">
+      <a class="nav-link" data-view="home">🏠<br>হোম</a>
+      <a class="nav-link" data-view="chat">💬<br>মেসেজ</a>
+      <a class="nav-link active" data-view="reels">🎬<br>রিলস</a>
+      <a class="calls-tab">📞<br>কলস</a>
+      <a class="nav-link" data-view="profile">👤<br>প্রোফাইল</a>
+    </div>
+  </div>
+
+  <!-- ===================== CHAT VIEW ===================== -->
+  <div id="view-chat" class="view">
+    <div class="chat-header">
+      <h2>Z-Chat</h2>
+      <div class="chat-actions">
+        <span id="btnNewGroup" title="নতুন গ্রুপ">👥➕</span>
+        <span id="btnCallVoice">📞</span>
+        <span id="btnCallVideo">📹</span>
+        <span id="btnChatSettings">⚙️</span>
+      </div>
+    </div>
+
+    <div id="groupSectionLabel" style="padding:10px 15px 4px; font-weight:bold; color:#65676b; font-size:13px; display:none;">গ্রুপসমূহ</div>
+    <ul class="chat-list" id="groupList"></ul>
+
+    <div style="padding:10px 15px 4px; font-weight:bold; color:#65676b; font-size:13px;">সব ব্যবহারকারী</div>
+    <ul class="chat-list" id="chatList">
+      <li class="chat-list-empty" id="chatListEmpty">লোড হচ্ছে...</li>
+    </ul>
+
+    <div class="bottom-nav">
+      <a class="nav-link" data-view="home">🏠<br>হোম</a>
+      <a class="nav-link active" data-view="chat">💬<br>মেসেজ</a>
+      <a class="nav-link" data-view="reels">🎬<br>রিলস</a>
+      <a class="calls-tab">📞<br>কলস</a>
+      <a class="nav-link" data-view="profile">👤<br>প্রোফাইল</a>
+    </div>
+  </div>
+
+  <!-- ===================== NEW GROUP VIEW ===================== -->
+  <div id="view-new-group" class="view">
+    <div class="chat-header">
+      <div class="conv-header-left">
+        <span class="conv-back" id="btnBackFromNewGroup">←</span>
+        <h2>নতুন গ্রুপ</h2>
+      </div>
+    </div>
+    <div style="padding:12px;">
+      <input type="text" id="newGroupName" class="input-box" placeholder="গ্রুপের নাম লিখুন" maxlength="50">
+    </div>
+    <div style="padding:0 12px 4px; font-weight:bold; color:#65676b; font-size:13px;">সদস্য নির্বাচন করুন</div>
+    <ul class="chat-list" id="newGroupMembersList"></ul>
+    <div style="padding:12px;">
+      <button type="button" id="btnCreateGroup" class="btn-login">গ্রুপ তৈরি করুন</button>
+      <div id="newGroupError" class="login-error"></div>
+    </div>
+  </div>
+
+  <!-- ===================== GROUP CHAT VIEW ===================== -->
+  <div id="view-group-chat" class="view">
+    <div class="chat-header">
+      <div class="conv-header-left">
+        <span class="conv-back" id="btnBackFromGroupChat">←</span>
+        <div class="avatar" id="groupChatAvatar" style="width:36px;height:36px;font-size:14px;">👥</div>
+        <div>
+          <h2 id="groupChatName" style="font-size:17px;">গ্রুপ</h2>
+          <p id="groupChatMemberCount" style="font-size:12px; color:#65676b;"></p>
+        </div>
+      </div>
+      <div class="chat-actions">
+        <span id="btnGroupInfo" title="গ্রুপ তথ্য">ℹ️</span>
+      </div>
+    </div>
+    <div class="messages-container" id="groupMessagesContainer"></div>
+
+    <div class="chat-media-preview" id="groupMediaPreview">
+      <button type="button" class="remove-chat-media" id="removeGroupMedia">✕</button>
+      <div id="groupMediaPreviewInner"></div>
+      <div class="chat-upload-progress" id="groupUploadProgress"></div>
+    </div>
+
+    <div class="voice-record-bar" id="groupVoiceRecordBar">
+      <span class="rec-dot"></span>
+      <span id="groupRecordTimerText" class="record-timer-text">০:০০</span>
+      <span class="record-hint">রেকর্ড হচ্ছে...</span>
+      <button type="button" class="voice-cancel-btn" id="btnCancelGroupRecording">✕ বাতিল</button>
+      <button type="button" class="voice-stop-btn" id="btnStopGroupRecording">⏹ শেষ করুন</button>
+    </div>
+
+    <div class="message-input-row">
+      <label for="groupMediaInput" class="attach-btn-label">📎</label>
+      <input type="file" id="groupMediaInput" accept="image/*,video/*" style="display:none;">
+      <button type="button" class="attach-btn-label voice-record-btn" id="btnGroupVoiceRecord">🎤</button>
+      <input type="text" id="groupMessageInput" placeholder="মেসেজ লিখুন..." autocomplete="off" maxlength="4000">
+      <button type="button" id="btnSendGroupMessage">➤</button>
+    </div>
+  </div>
+
+  <!-- ===================== GROUP INFO VIEW ===================== -->
+  <div id="view-group-info" class="view">
+    <div class="chat-header">
+      <div class="conv-header-left">
+        <span class="conv-back" id="btnBackFromGroupInfo">←</span>
+        <h2>গ্রুপ তথ্য</h2>
+      </div>
+    </div>
+    <div style="background:#fff; margin:10px; padding:20px 15px; border-radius:8px; text-align:center; box-shadow:0 1px 2px rgba(0,0,0,0.1);">
+      <div class="avatar" style="width:64px; height:64px; font-size:26px; margin:0 auto 12px; background:#42b72a;">👥</div>
+      <div style="margin-bottom:4px;">
+        <h2 id="groupInfoName" style="font-size:18px; color:#050505; display:inline;"></h2>
+        <span id="btnEditGroupName" title="নাম পরিবর্তন করুন" style="cursor:pointer; font-size:14px; margin-left:6px; display:none;">✏️</span>
+      </div>
+      <div id="groupNameEditForm" style="display:none; margin:10px 0; text-align:left;">
+        <input type="text" id="groupNameEditInput" class="input-box" style="margin:0 0 8px;" placeholder="নতুন নাম" maxlength="50">
+        <div style="display:flex; gap:8px;">
+          <button type="button" id="btnSaveGroupName" style="flex:1; background:#1877f2; color:#fff; border:none; border-radius:6px; padding:10px; font-weight:bold; cursor:pointer;">সেভ করুন</button>
+          <button type="button" id="btnCancelGroupNameEdit" style="flex:1; background:#e4e6eb; color:#050505; border:none; border-radius:6px; padding:10px; font-weight:bold; cursor:pointer;">বাতিল</button>
+        </div>
+      </div>
+      <p id="groupInfoMemberCount" style="font-size:13px; color:#65676b;"></p>
+    </div>
+
+    <div style="display:flex; justify-content:space-between; align-items:center; margin:14px 10px 6px;">
+      <span style="font-weight:bold; color:#65676b; font-size:14px;">সদস্যগণ</span>
+      <button type="button" id="btnAddMembers" style="background:#1877f2; color:#fff; border:none; padding:6px 12px; border-radius:6px; font-size:12px; font-weight:bold; cursor:pointer;">+ যোগ করুন</button>
+    </div>
+    <ul class="chat-list" id="groupInfoMembersList"></ul>
+
+    <div style="padding:16px; display:flex; flex-direction:column; gap:10px;">
+      <button type="button" id="btnLeaveGroup" style="background:#e4e6eb; color:#050505; border:none; padding:12px; border-radius:6px; font-weight:bold; cursor:pointer;">গ্রুপ ছেড়ে দিন</button>
+      <button type="button" id="btnDeleteGroup" style="background:#e41e3f; color:#fff; border:none; padding:12px; border-radius:6px; font-weight:bold; cursor:pointer; display:none;">গ্রুপ ডিলিট করুন</button>
+    </div>
+  </div>
+
+  <!-- ===================== ADD GROUP MEMBERS VIEW ===================== -->
+  <div id="view-add-members" class="view">
+    <div class="chat-header">
+      <div class="conv-header-left">
+        <span class="conv-back" id="btnBackFromAddMembers">←</span>
+        <h2>সদস্য যোগ করুন</h2>
+      </div>
+    </div>
+    <ul class="chat-list" id="addMembersList"></ul>
+    <div style="padding:12px;">
+      <button type="button" id="btnConfirmAddMembers" class="btn-login">যোগ করুন</button>
+      <div id="addMembersError" class="login-error"></div>
+    </div>
+  </div>
+
+  <!-- ===================== PROFILE VIEW ===================== -->
+  <div id="view-profile" class="view">
+    <div class="navbar">
+      <div class="logo">প্রোফাইল</div>
+    </div>
+
+    <div style="background:#fff; margin:10px; padding:24px 15px; border-radius:8px; text-align:center; box-shadow:0 1px 2px rgba(0,0,0,0.1);">
+      <div class="avatar-edit-wrap">
+        <div class="avatar" id="profileAvatar" style="width:76px; height:76px; font-size:30px; margin:0 auto 12px;"></div>
+        <label for="profilePhotoInput" class="avatar-edit-btn" title="প্রোফাইল ছবি পরিবর্তন করুন">📷</label>
+        <input type="file" id="profilePhotoInput" accept="image/*" style="display:none;">
+      </div>
+      <div id="profilePhotoUploadMsg" style="font-size:12px; color:#1877f2; min-height:14px; margin-bottom:4px;"></div>
+      <div style="margin-bottom:4px;">
+        <h2 id="profileName" style="font-size:19px; color:#050505; display:inline;"></h2>
+        <span id="btnEditName" title="নাম পরিবর্তন করুন" style="cursor:pointer; font-size:14px; margin-left:6px;">✏️</span>
+      </div>
+      <div id="nameEditForm" style="display:none; margin:10px 0; text-align:left;">
+        <input type="text" id="nameEditInput" class="input-box" style="margin:0 0 8px;" placeholder="নতুন নাম লিখুন" maxlength="40">
+        <div style="display:flex; gap:8px;">
+          <button type="button" id="btnSaveName" style="flex:1; background:#1877f2; color:#fff; border:none; border-radius:6px; padding:10px; font-weight:bold; cursor:pointer;">সেভ করুন</button>
+          <button type="button" id="btnCancelNameEdit" style="flex:1; background:#e4e6eb; color:#050505; border:none; border-radius:6px; padding:10px; font-weight:bold; cursor:pointer;">বাতিল</button>
+        </div>
+        <div id="nameEditMsg" style="font-size:12px; margin-top:6px; min-height:14px;"></div>
+      </div>
+      <p id="profileEmail" style="font-size:13px; color:#65676b; margin-bottom:8px;"></p>
+      <div class="follow-counts">
+        <div><b id="myFollowersCount">0</b><span>ফলোয়ার</span></div>
+        <div><b id="myFollowingCount">0</b><span>ফলোয়িং</span></div>
+      </div>
+      <button type="button" id="btnProfileLogout" style="background:#e41e3f; color:#fff; border:none; padding:10px 22px; border-radius:6px; font-weight:bold; font-size:14px; cursor:pointer;">লগআউট</button>
+    </div>
+
+    <div style="margin:14px 10px 6px; font-weight:bold; color:#65676b; font-size:14px;">আমার পোস্টসমূহ</div>
+    <div id="profilePostsContainer">
+      <div class="feed-empty">এখনো কোনো পোস্ট করেননি।</div>
+    </div>
+
+    <div class="bottom-nav">
+      <a class="nav-link" data-view="home">🏠<br>হোম</a>
+      <a class="nav-link" data-view="chat">💬<br>মেসেজ</a>
+      <a class="nav-link" data-view="reels">🎬<br>রিলস</a>
+      <a class="calls-tab">📞<br>কলস</a>
+      <a class="nav-link active" data-view="profile">👤<br>প্রোফাইল</a>
+    </div>
+  </div>
+
+  <!-- ===================== NOTIFICATIONS VIEW ===================== -->
+  <div id="view-notifications" class="view">
+    <div class="navbar">
+      <div style="display:flex; align-items:center;">
+        <span class="conv-back-userprofile" id="btnBackFromNotifications">←</span>
+        <div class="logo">নোটিফিকেশন</div>
+      </div>
+    </div>
+    <ul class="chat-list" id="notifList" style="padding-bottom:60px; list-style:none;">
+      <li class="chat-list-empty">লোড হচ্ছে...</li>
+    </ul>
+  </div>
+
+  <!-- ===================== USER PROFILE VIEW (someone else's profile) ===================== -->
+  <div id="view-user-profile" class="view">
+    <div class="navbar">
+      <div style="display:flex; align-items:center;">
+        <span class="conv-back-userprofile" id="btnBackFromUserProfile">←</span>
+        <div class="logo">প্রোফাইল</div>
+      </div>
+    </div>
+
+    <div style="background:#fff; margin:10px; padding:24px 15px; border-radius:8px; text-align:center; box-shadow:0 1px 2px rgba(0,0,0,0.1);">
+      <div class="avatar" id="userProfileAvatar" style="width:76px; height:76px; font-size:30px; margin:0 auto 12px;"></div>
+      <h2 id="userProfileName" style="font-size:19px; color:#050505;"></h2>
+      <div class="follow-counts">
+        <div><b id="userProfileFollowersCount">0</b><span>ফলোয়ার</span></div>
+        <div><b id="userProfileFollowingCount">0</b><span>ফলোয়িং</span></div>
+      </div>
+      <button type="button" class="btn-follow" id="btnFollowToggle">ফলো করুন</button>
+    </div>
+
+    <div style="margin:14px 10px 6px; font-weight:bold; color:#65676b; font-size:14px;">পোস্টসমূহ</div>
+    <div id="userProfilePostsContainer">
+      <div class="feed-empty">এখনো কোনো পোস্ট নেই।</div>
+    </div>
+
+    <div class="bottom-nav">
+      <a class="nav-link" data-view="home">🏠<br>হোম</a>
+      <a class="nav-link" data-view="chat">💬<br>মেসেজ</a>
+      <a class="nav-link" data-view="reels">🎬<br>রিলস</a>
+      <a class="calls-tab">📞<br>কলস</a>
+      <a class="nav-link" data-view="profile">👤<br>প্রোফাইল</a>
+    </div>
+  </div>
+
+  <!-- ===================== CONVERSATION VIEW (real messenger) ===================== -->
+  <div id="view-conversation" class="view">
+    <div class="chat-header">
+      <div class="conv-header-left">
+        <span class="conv-back" id="btnBackToChatList">←</span>
+        <div class="avatar" id="convAvatar" style="width:36px;height:36px;font-size:14px;"></div>
+        <h2 id="convUserName">চ্যাট</h2>
+      </div>
+      <div class="chat-actions">
+        <span id="btnConvCallVoice">📞</span>
+        <span id="btnConvCallVideo">📹</span>
+      </div>
+    </div>
+
+    <div class="messages-container" id="messagesContainer"></div>
+
+    <div class="chat-media-preview" id="chatMediaPreview">
+      <button type="button" class="remove-chat-media" id="removeChatMedia">✕</button>
+      <div id="chatMediaPreviewInner"></div>
+      <div class="chat-upload-progress" id="chatUploadProgress"></div>
+    </div>
+
+    <div class="voice-record-bar" id="voiceRecordBar">
+      <span class="rec-dot"></span>
+      <span id="recordTimerText" class="record-timer-text">০:০০</span>
+      <span class="record-hint">রেকর্ড হচ্ছে...</span>
+      <button type="button" class="voice-cancel-btn" id="btnCancelRecording">✕ বাতিল</button>
+      <button type="button" class="voice-stop-btn" id="btnStopRecording">⏹ শেষ করুন</button>
+    </div>
+
+    <div class="message-input-row">
+      <label for="chatMediaInput" class="attach-btn-label">📎</label>
+      <input type="file" id="chatMediaInput" accept="image/*,video/*" style="display:none;">
+      <button type="button" class="attach-btn-label voice-record-btn" id="btnVoiceRecord">🎤</button>
+      <input type="text" id="messageInput" placeholder="মেসেজ লিখুন..." autocomplete="off" maxlength="4000">
+      <button type="button" id="btnSendMessage">➤</button>
+    </div>
+  </div>
+
+  <!-- ===================== REPORT MODAL ===================== -->
+  <div class="report-overlay" id="reportOverlay">
+    <div class="report-box">
+      <h3>পোস্টটি কেন রিপোর্ট করছেন?</h3>
+      <button type="button" class="report-reason" data-reason="18+">🔞 ১৮+ / নগ্ন / যৌন কনটেন্ট</button>
+      <button type="button" class="report-reason" data-reason="violence">⚠️ সহিংসতা বা হয়রানি</button>
+      <button type="button" class="report-reason" data-reason="spam">🚫 স্প্যাম</button>
+      <button type="button" class="report-reason" data-reason="misinformation">❗ মিথ্যা তথ্য</button>
+      <button type="button" class="report-reason" data-reason="other">অন্যান্য</button>
+      <div id="reportMsg" class="report-msg"></div>
+      <div class="report-actions">
+        <button type="button" class="report-cancel" id="btnCancelReport">বাতিল</button>
+        <button type="button" class="report-submit" id="btnSubmitReport" disabled>রিপোর্ট পাঠান</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== REEL UPLOAD MODAL ===================== -->
+  <div class="reel-upload-overlay" id="reelUploadOverlay">
+    <div class="reel-upload-box">
+      <h3>নতুন রিল আপলোড করুন</h3>
+      <label for="reelVideoInput" class="reel-pick-btn">🎥 ভিডিও বাছাই করুন</label>
+      <input type="file" id="reelVideoInput" accept="video/*" style="display:none;">
+      <div class="reel-video-preview" id="reelVideoPreview">
+        <video id="reelVideoPreviewEl" controls playsinline></video>
+      </div>
+      <textarea id="reelCaptionInput" placeholder="ক্যাপশন লিখুন (ঐচ্ছিক)..." rows="2" maxlength="500"></textarea>
+      <div class="reel-consent-row">
+        <input type="checkbox" id="reelConsentCheck">
+        <label for="reelConsentCheck">আমি নিশ্চিত করছি এই ভিডিওতে ১৮+, নগ্নতা বা যৌন কনটেন্ট নেই।</label>
+      </div>
+      <div class="reel-upload-progress" id="reelUploadProgress">আপলোড হচ্ছে... 0%</div>
+      <div class="reel-upload-error" id="reelUploadError"></div>
+      <div class="reel-upload-actions">
+        <button type="button" class="reel-upload-cancel" id="btnCancelReelUpload">বাতিল</button>
+        <button type="button" class="reel-upload-submit" id="btnSubmitReelUpload" disabled>আপলোড করুন</button>
+      </div>
+    </div>
+  </div>
+
+<script type="module">
+  // ---------------------------------------------------------------
+  // Firebase Config (Z-Book) — Auth + Firestore + Storage
+  // ---------------------------------------------------------------
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+  import {
+    getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword,
+    onAuthStateChanged, signOut, sendPasswordResetEmail, updateProfile, sendEmailVerification
+  } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+  import {
+    getFirestore, collection, addDoc, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc,
+    onSnapshot, query, where, orderBy, limit, startAfter, serverTimestamp, arrayUnion, arrayRemove,
+    increment, writeBatch
+  } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+  // NOTE: Firebase Storage requires the project to be on the paid Blaze
+  // plan (billing card on file), which isn't available here. Media
+  // uploads (post/reel images & video, profile photos, chat voice notes)
+  // are instead sent straight from the browser to Cloudinary's free tier
+  // using an "unsigned" upload preset — no backend, no card needed.
+  //
+  // ref / uploadBytesResumable / getDownloadURL / deleteObject below are
+  // drop-in replacements matching the shape of the real Firebase Storage
+  // SDK functions of the same names, so nothing else in this file (the
+  // post/reel/profile/chat upload code further down) had to change.
+
+  const CLOUDINARY_CLOUD_NAME = 'fvke0rlm';
+  const CLOUDINARY_UPLOAD_PRESET = 'Z-Book';
+
+  function cloudinaryResourceType(file) {
+    const type = (file && file.type) || '';
+    if (type.startsWith('video/')) return 'video';
+    if (type.startsWith('audio/')) return 'video'; // Cloudinary serves audio through the video endpoint
+    return 'image';
+  }
+
+  function ref(_storage, path) {
+    // Real Firebase Storage refs point at a path; here we just carry the
+    // path along plus a spot to stash the resulting Cloudinary URL once
+    // the upload finishes.
+    return { path, url: null };
+  }
+
+  function uploadBytesResumable(storageRef, file) {
+    const resourceType = cloudinaryResourceType(file);
+    const uploadUrl = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/${resourceType}/upload`;
+    let progressCb = null;
+
+    const promise = new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', uploadUrl);
+      // RELIABILITY FIX: on a flaky/slow mobile connection, the upload
+      // could stall after reaching 100% (data fully sent, but the
+      // server's response never arrives) with no error and no timeout —
+      // xhr.onload/onerror simply never fired, so the UI stayed stuck on
+      // "আপলোড হচ্ছে..." forever with no way to know it had failed. This
+      // caps the whole request at a timeout; past that, ontimeout fires a
+      // clear rejection so the UI can show an error and the user can retry.
+      // Video files are much bigger than images and take longer to reach
+      // Cloudinary on a slow mobile connection, so they get a longer cap.
+      xhr.timeout = resourceType === 'video' ? 180000 : 60000;
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable && progressCb) {
+          progressCb({ bytesTransferred: e.loaded, totalBytes: e.total });
+        }
+      };
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            const data = JSON.parse(xhr.responseText);
+            storageRef.url = data.secure_url;
+            resolve(task);
+          } catch (e) {
+            reject(e);
+          }
+        } else {
+          // Surface Cloudinary's actual error message (e.g. "Upload preset
+          // must be whitelisted for unsigned usage", "Invalid cloud_name")
+          // instead of raw response text, so the real cause is visible in
+          // the alert box and the browser console instead of a dead end.
+          let detail = xhr.responseText;
+          try {
+            const parsed = JSON.parse(xhr.responseText);
+            if (parsed && parsed.error && parsed.error.message) detail = parsed.error.message;
+          } catch (e) { /* keep raw text if it isn't JSON */ }
+          reject(new Error('Cloudinary upload failed (' + xhr.status + '): ' + detail));
+        }
+      };
+      xhr.onerror = () => reject(new Error('আপলোড ব্যর্থ হয়েছে — ইন্টারনেট কানেকশন চেক করুন।'));
+      xhr.ontimeout = () => {
+        const secs = Math.round(xhr.timeout / 1000);
+        reject(new Error('আপলোড অনেক দেরি হচ্ছে (' + secs + ' সেকেন্ডের বেশি) — নেট কানেকশন দুর্বল হতে পারে, আবার চেষ্টা করুন।'));
+      };
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+      xhr.send(formData);
+    });
+
+    // Supports both call styles used elsewhere in this file:
+    //   task.on('state_changed', onProgress, onError, onComplete)
+    // and
+    //   await uploadBytesResumable(ref, file)
+    const task = {
+      snapshot: { ref: storageRef },
+      on(_event, onProgress, onError, onComplete) {
+        progressCb = onProgress;
+        promise.then(() => { if (onComplete) onComplete(); }, (err) => { if (onError) onError(err); });
+      },
+      then(onFulfilled, onRejected) { return promise.then(onFulfilled, onRejected); },
+      catch(onRejected) { return promise.catch(onRejected); }
+    };
+    return task;
+  }
+
+  async function getDownloadURL(storageRef) {
+    return storageRef.url;
+  }
+
+  // Cloudinary's free/unsigned setup can't delete a file from the browser
+  // without exposing a secret key, so this is a safe no-op — old media
+  // just stays in Cloudinary storage even after a post/message/photo is
+  // removed from the app. Nothing in the app breaks because of this;
+  // it only means Cloudinary storage usage won't shrink automatically.
+  async function deleteObject(_storageRef) {
+    return Promise.resolve();
+  }
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyAHzn8T5GKnYFj90sQEVSLOmS4ZG8Cmywo",
+    authDomain: "z-book-f741e.firebaseapp.com",
+    projectId: "z-book-f741e",
+    storageBucket: "z-book-f741e.firebasestorage.app",
+    messagingSenderId: "781094305729",
+    appId: "1:781094305729:web:f1a06bed46a74ae4fff940",
+    measurementId: "G-0YPMFXFZ53"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+  // Kept as a harmless placeholder: several places further down still
+  // call ref(storage, path) — the shim ref() above ignores this first
+  // argument, so this just prevents a "storage is not defined" error.
+  const storage = null;
+  window._zbook = { app, auth, db };
+
+  // ---------------------------------------------------------------
+  // Splash screen
+  // ---------------------------------------------------------------
+  setTimeout(() => {
+    const splash = document.getElementById('splash-screen');
+    if (splash) splash.style.display = 'none';
+  }, 3300);
+
+  // ---------------------------------------------------------------
+  // View switching
+  // ---------------------------------------------------------------
+  function showView(name) {
+    // Pause every reel video when navigating away from the Reels tab —
+    // without this, a video left playing off-screen keeps its audio
+    // running in the background on every other tab.
+    if (name !== 'reels') {
+      document.querySelectorAll('#reelsContainer video').forEach((v) => v.pause());
+    }
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    document.getElementById('view-' + name).classList.add('active');
+  }
+  document.querySelectorAll('.nav-link').forEach(link => {
+    link.addEventListener('click', () => {
+      const target = link.dataset.view;
+      showView(target);
+      if (target === 'profile') renderProfileView();
+    });
+  });
+
+  // ---------------------------------------------------------------
+  // Placeholder features: calls tab, voice/video call icons,
+  // notifications bell, chat settings gear. These had no click
+  // handler at all before, so tapping them silently did nothing —
+  // it looked like the app was frozen or broken. They now give the
+  // same "coming soon" feedback the post Share button already gives,
+  // instead of staying silent.
+  // ---------------------------------------------------------------
+  function comingSoon(msg) {
+    return () => alert(msg);
+  }
+  document.querySelectorAll('.calls-tab').forEach(el =>
+    el.addEventListener('click', comingSoon('কল লিস্ট ফিচারটি শীঘ্রই আসছে।')));
+  const btnNotifications = document.getElementById('btnNotifications');
+  if (btnNotifications) btnNotifications.addEventListener('click', openNotifications);
+  const btnChatSettings = document.getElementById('btnChatSettings');
+  if (btnChatSettings) btnChatSettings.addEventListener('click', comingSoon('সেটিংস ফিচারটি শীঘ্রই আসছে।'));
+  ['btnCallVoice', 'btnConvCallVoice'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('click', comingSoon('ভয়েস কল ফিচারটি শীঘ্রই আসছে।'));
+  });
+  ['btnCallVideo', 'btnConvCallVideo'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('click', comingSoon('ভিডিও কল ফিচারটি শীঘ্রই আসছে।'));
+  });
+
+  // ---------------------------------------------------------------
+  // Auth: login / register / logout / auth state
+  // ---------------------------------------------------------------
+  const loginForm = document.getElementById('loginForm');
+  const loginError = document.getElementById('loginError');
+  const btnLoginSubmit = document.getElementById('btnLoginSubmit');
+  const btnRegister = document.getElementById('btnRegister');
+  const btnLogout = document.getElementById('btnLogout');
+
+  let currentUser = null;
+  let unsubscribeFeed = null;
+  let unsubscribeUsers = null;
+  let unsubscribeMessages = null;
+  let unsubscribeNotifications = null;
+  let currentConvId = null;
+  let currentPeer = null;
+  const convPreviewUnsub = {};
+  const latestUsersData = {}; // uid -> latest user doc data, kept fresh for the online-dot refresh timer below
+  let onlineRefreshInterval = null;
+
+  // ---------------------------------------------------------------
+  // Presence: Firestore has no built-in "disconnect" event (that
+  // needs the Realtime Database), so we fake it with a heartbeat —
+  // write lastActive every HEARTBEAT_MS while logged in, and treat
+  // a user as online only if their lastActive is fresher than
+  // ONLINE_THRESHOLD_MS. This also self-heals a user whose tab
+  // crashed/lost network without a clean logout: they just go stale
+  // and drop to "offline" once the threshold passes, instead of
+  // staying stuck as "online" forever.
+  // ---------------------------------------------------------------
+  const HEARTBEAT_MS = 45000;
+  const ONLINE_THRESHOLD_MS = 90000;
+  let presenceInterval = null;
+
+  function startPresenceHeartbeat() {
+    stopPresenceHeartbeat();
+    presenceInterval = setInterval(() => {
+      if (!currentUser) return;
+      updateDoc(doc(db, 'users', currentUser.uid), {
+        online: true,
+        lastActive: serverTimestamp()
+      }).catch((err) => console.error('Heartbeat error:', err.code, err.message));
+    }, HEARTBEAT_MS);
+  }
+  function stopPresenceHeartbeat() {
+    if (presenceInterval) { clearInterval(presenceInterval); presenceInterval = null; }
+  }
+  async function markOffline() {
+    if (!currentUser) return;
+    try {
+      await updateDoc(doc(db, 'users', currentUser.uid), { online: false, lastActive: serverTimestamp() });
+    } catch (err) {
+      console.error('Mark offline error:', err.code, err.message);
+    }
+  }
+
+  onAuthStateChanged(auth, async (user) => {
+    currentUser = user;
+    if (user) {
+      showView('home');
+      startFeedListener();
+      // Show a reminder banner for anyone who hasn't confirmed their
+      // email yet (see the registration handler above and
+      // btnResendVerify below). This is a client-side nudge only —
+      // it doesn't block reading the feed — but posting is soft-locked
+      // below until the address is verified.
+      const verifyBanner = document.getElementById('emailVerifyBanner');
+      if (verifyBanner) verifyBanner.style.display = user.emailVerified ? 'none' : 'block';
+      try {
+        await setDoc(doc(db, 'users', user.uid), {
+          uid: user.uid,
+          name: displayNameOf(user),
+          email: user.email || '',
+          online: true,
+          lastActive: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        }, { merge: true });
+      } catch (err) {
+        console.error('User sync error:', err.code, err.message);
+      }
+      startPresenceHeartbeat();
+      startChatListListener();
+      startNotificationsListener();
+      startGroupsListener();
+      startReelsListener();
+    } else {
+      stopPresenceHeartbeat();
+      if (unsubscribeFeed) { unsubscribeFeed(); unsubscribeFeed = null; }
+      if (unsubscribeUsers) { unsubscribeUsers(); unsubscribeUsers = null; }
+      if (unsubscribeMessages) { unsubscribeMessages(); unsubscribeMessages = null; }
+      if (unsubscribeNotifications) { unsubscribeNotifications(); unsubscribeNotifications = null; }
+      if (unsubscribeConvSeen) { unsubscribeConvSeen(); unsubscribeConvSeen = null; }
+      if (unsubscribeGroups) { unsubscribeGroups(); unsubscribeGroups = null; }
+      if (unsubscribeGroupMessages) { unsubscribeGroupMessages(); unsubscribeGroupMessages = null; }
+      if (unsubscribeReels) { unsubscribeReels(); unsubscribeReels = null; }
+      Object.keys(reelCommentUnsub).forEach((k) => { reelCommentUnsub[k](); delete reelCommentUnsub[k]; });
+      Object.keys(convPreviewUnsub).forEach((k) => { convPreviewUnsub[k](); delete convPreviewUnsub[k]; });
+      if (onlineRefreshInterval) { clearInterval(onlineRefreshInterval); onlineRefreshInterval = null; }
+      Object.keys(latestUsersData).forEach((k) => delete latestUsersData[k]);
+      currentConvId = null;
+      currentPeer = null;
+      showView('login');
+    }
+  });
+
+  function setLoginMessage(text, isError) {
+    loginError.textContent = text;
+    loginError.style.color = isError ? '#e41e3f' : '#31a24c';
+  }
+
+  loginForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('loginEmail').value.trim();
+    const pass = document.getElementById('loginPass').value;
+    setLoginMessage('', true);
+    btnLoginSubmit.disabled = true;
+    try {
+      await signInWithEmailAndPassword(auth, email, pass);
+    } catch (err) {
+      console.error('Login error:', err.code, err.message);
+      setLoginMessage('লগইন ব্যর্থ: ' + (err.code || err.message), true);
+    } finally {
+      btnLoginSubmit.disabled = false;
+    }
+  });
+
+  btnRegister.addEventListener('click', async () => {
+    const email = document.getElementById('loginEmail').value.trim();
+    const pass = document.getElementById('loginPass').value;
+    setLoginMessage('', true);
+    if (!email || !pass) {
+      setLoginMessage('ইমেইল এবং পাসওয়ার্ড দিন।', true);
+      return;
+    }
+    btnRegister.disabled = true;
+    try {
+      const cred = await createUserWithEmailAndPassword(auth, email, pass);
+      // SECURITY FIX: previously no verification email was ever sent, so
+      // anyone could register with a fake/typo'd email address they don't
+      // control. This sends Firebase's verification email right away;
+      // the account still works immediately (nothing blocks login), but
+      // unverified users see a reminder banner in the app (see the
+      // onAuthStateChanged handler and #emailVerifyBanner below) until
+      // they confirm their address.
+      try {
+        await sendEmailVerification(cred.user);
+      } catch (verifyErr) {
+        console.error('Send verification email error:', verifyErr.code, verifyErr.message);
+      }
+    } catch (err) {
+      console.error('Register error:', err.code, err.message);
+      setLoginMessage('রেজিস্ট্রেশন ব্যর্থ: ' + (err.code || err.message), true);
+    } finally {
+      btnRegister.disabled = false;
+    }
+  });
+
+  const btnForgotPass = document.getElementById('btnForgotPass');
+  btnForgotPass.addEventListener('click', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('loginEmail').value.trim();
+    if (!email) {
+      setLoginMessage('আগে উপরের বক্সে আপনার ইমেইল লিখুন, তারপর এখানে চাপুন।', true);
+      return;
+    }
+    try {
+      await sendPasswordResetEmail(auth, email);
+      setLoginMessage('পাসওয়ার্ড রিসেট লিংক পাঠানো হয়েছে — ইমেইল চেক করুন।', false);
+    } catch (err) {
+      console.error('Reset password error:', err.code, err.message);
+      setLoginMessage('রিসেট লিংক পাঠাতে সমস্যা হয়েছে: ' + (err.code || err.message), true);
+    }
+  });
+
+  const btnResendVerify = document.getElementById('btnResendVerify');
+  btnResendVerify.addEventListener('click', async () => {
+    if (!currentUser) return;
+    btnResendVerify.disabled = true;
+    try {
+      await sendEmailVerification(currentUser);
+      alert('ভেরিফিকেশন লিংক আবার পাঠানো হয়েছে — ইমেইল চেক করুন।');
+    } catch (err) {
+      console.error('Resend verification error:', err.code, err.message);
+      alert('লিংক পাঠাতে সমস্যা হয়েছে, একটু পর আবার চেষ্টা করুন।');
+    } finally {
+      btnResendVerify.disabled = false;
+    }
+  });
+
+  btnLogout.addEventListener('click', async () => {
+    await markOffline();
+    await signOut(auth);
+  });
+
+  function displayNameOf(user) {
+    if (!user) return 'ব্যবহারকারী';
+    if (user.displayName) return user.displayName;
+    if (user.email) return user.email.split('@')[0];
+    return 'ব্যবহারকারী';
+  }
+  function avatarLetterOf(user) {
+    const n = displayNameOf(user);
+    return n.charAt(0).toUpperCase();
+  }
+  // Returns innerHTML for an .avatar div: a profile photo <img> when one
+  // exists, otherwise the first-letter fallback (escaped, since names are
+  // user-supplied text). Used everywhere an avatar is rendered so photo
+  // support and the letter fallback stay in exactly one place.
+  function avatarInner(name, photoURL) {
+    // SECURITY FIX: photoURL is user-supplied (settable directly via the
+    // Auth/Firestore API, bypassing the app's own upload flow) and was
+    // being inserted into the src="" attribute unescaped. A value like
+    // `x" onerror="...` could break out of the attribute and inject
+    // arbitrary HTML/JS (stored XSS) into every place an avatar is shown
+    // (posts, notifications, chat lists, group member lists). Now
+    // escaped the same way mediaURL already is via escapeAttr().
+    if (photoURL) {
+      return `<img src="${escapeAttr(photoURL)}" alt="" referrerpolicy="no-referrer">`;
+    }
+    const letter = (name || '?').charAt(0).toUpperCase();
+    const div = document.createElement('div');
+    div.textContent = letter;
+    return div.innerHTML;
+  }
+
+  // ---------------------------------------------------------------
+  // Post creation (text + optional image/video upload to Storage)
+  // ---------------------------------------------------------------
+  const postText = document.getElementById('postText');
+  const postMediaInput = document.getElementById('postMediaInput');
+  const mediaPreview = document.getElementById('mediaPreview');
+  const mediaPreviewInner = document.getElementById('mediaPreviewInner');
+  const removeMediaBtn = document.getElementById('removeMedia');
+  const btnSubmitPost = document.getElementById('btnSubmitPost');
+  const mediaConsentRow = document.getElementById('mediaConsentRow');
+  const mediaConsentCheck = document.getElementById('mediaConsentCheck');
+  const uploadProgress = document.getElementById('uploadProgress');
+
+  let selectedFile = null;
+
+  // ---------------------------------------------------------------
+  // Upload size limits. Without this, a single large video pick could
+  // silently eat a big chunk of the Firebase free-tier Storage quota
+  // (or just fail/hang on a slow connection) with no warning at all.
+  // Images and videos get separate caps since videos are naturally bigger.
+  // ---------------------------------------------------------------
+  const MAX_IMAGE_BYTES = 10 * 1024 * 1024;  // 10MB
+  const MAX_VIDEO_BYTES = 50 * 1024 * 1024;  // 50MB
+
+  function validateMediaFile(file) {
+    const isVideo = file.type.startsWith('video/');
+    const limit = isVideo ? MAX_VIDEO_BYTES : MAX_IMAGE_BYTES;
+    if (file.size > limit) {
+      const limitMB = Math.round(limit / (1024 * 1024));
+      return (isVideo ? 'ভিডিও' : 'ছবি') + 'টি অনেক বড় (সর্বোচ্চ ' + limitMB + 'MB পর্যন্ত অনুমোদিত)।';
+    }
+    return null; // no error
+  }
+
+  postMediaInput.addEventListener('change', () => {
+    const file = postMediaInput.files[0];
+    if (!file) return;
+    const sizeError = validateMediaFile(file);
+    if (sizeError) {
+      alert(sizeError);
+      postMediaInput.value = '';
+      return;
+    }
+    selectedFile = file;
+    const url = URL.createObjectURL(file);
+    mediaPreviewInner.innerHTML = '';
+    if (file.type.startsWith('video/')) {
+      const v = document.createElement('video');
+      v.src = url; v.controls = true;
+      mediaPreviewInner.appendChild(v);
+    } else {
+      const img = document.createElement('img');
+      img.src = url;
+      mediaPreviewInner.appendChild(img);
+    }
+    mediaPreview.style.display = 'block';
+    mediaConsentRow.classList.add('show');
+    mediaConsentCheck.checked = false;
+  });
+
+  removeMediaBtn.addEventListener('click', () => {
+    selectedFile = null;
+    postMediaInput.value = '';
+    mediaPreviewInner.innerHTML = '';
+    mediaPreview.style.display = 'none';
+    mediaConsentRow.classList.remove('show');
+    mediaConsentCheck.checked = false;
+  });
+
+  btnSubmitPost.addEventListener('click', async () => {
+    const text = postText.value.trim();
+    if (!text && !selectedFile) return;
+    if (!currentUser) { alert('আগে লগইন করুন।'); return; }
+    // SOFT LOCK: require a verified email before posting, so a fake or
+    // typo'd address can't be used to spam the public feed. This is a
+    // client-side check only (matching the app's other client-side
+    // checks) — it does not by itself stop someone from calling the
+    // Firestore API directly, so pairing it with a matching Firestore
+    // rule is a further hardening step if that's needed later.
+    if (!currentUser.emailVerified) {
+      alert('পোস্ট করার আগে আপনার ইমেইল ভেরিফাই করুন। ইনবক্স চেক করুন অথবা উপরের নোটিশ থেকে লিংক আবার পাঠান।');
+      return;
+    }
+    // Soft content-policy gate: a photo/video can't be submitted unless the
+    // poster has ticked the "no 18+/nudity" consent box. Client-side only —
+    // real enforcement of what actually got uploaded still relies on the
+    // report system + manual review, not this checkbox.
+    if (selectedFile && !mediaConsentCheck.checked) {
+      alert('পোস্ট করার আগে নিচের চেকবক্সে টিক দিয়ে নিশ্চিত করুন যে ছবি/ভিডিওতে ১৮+ কনটেন্ট নেই।');
+      return;
+    }
+
+    btnSubmitPost.disabled = true;
+    try {
+      let mediaURL = null;
+      let mediaType = null;
+
+      if (selectedFile) {
+        uploadProgress.style.display = 'block';
+        uploadProgress.textContent = 'আপলোড হচ্ছে... 0%';
+        mediaType = selectedFile.type.startsWith('video/') ? 'video' : 'image';
+        const path = 'posts/' + currentUser.uid + '/' + Date.now() + '_' + selectedFile.name;
+        const storageRef = ref(storage, path);
+        const task = uploadBytesResumable(storageRef, selectedFile);
+
+        mediaURL = await new Promise((resolve, reject) => {
+          task.on('state_changed',
+            (snap) => {
+              const pct = Math.round((snap.bytesTransferred / snap.totalBytes) * 100);
+              uploadProgress.textContent = 'আপলোড হচ্ছে... ' + pct + '%';
+            },
+            (err) => reject(err),
+            async () => {
+              const url = await getDownloadURL(task.snapshot.ref);
+              resolve(url);
+            }
+          );
+        });
+      }
+
+      await addDoc(collection(db, 'posts'), {
+        text: text,
+        mediaURL: mediaURL,
+        mediaType: mediaType,
+        authorUid: currentUser.uid,
+        authorName: displayNameOf(currentUser),
+        authorPhotoURL: currentUser.photoURL || null,
+        createdAt: serverTimestamp(),
+        likedBy: [],
+        commentsCount: 0
+      });
+
+      postText.value = '';
+      selectedFile = null;
+      postMediaInput.value = '';
+      mediaPreviewInner.innerHTML = '';
+      mediaPreview.style.display = 'none';
+      mediaConsentRow.classList.remove('show');
+      mediaConsentCheck.checked = false;
+      uploadProgress.style.display = 'none';
+    } catch (err) {
+      console.error('Post error:', err.code, err.message);
+      alert('পোস্ট করতে সমস্যা হয়েছে: ' + (err.code || err.message));
+      uploadProgress.style.display = 'none';
+    } finally {
+      btnSubmitPost.disabled = false;
+    }
+  });
+
+  // ---------------------------------------------------------------
+  // Feed: realtime listener, render posts, like, comment
+  // ---------------------------------------------------------------
+  const feedContainer = document.getElementById('feedContainer');
+  const feedEmpty = document.getElementById('feedEmpty');
+  const commentUnsubscribers = {};
+  const postNodes = {}; // postId -> rendered DOM node, kept alive across snapshots
+  const postDataStore = {}; // postId -> latest post data, used to build the Profile tab's post list
+
+  // ---------------------------------------------------------------
+  // Feed search: filters the already-loaded posts by author name or text
+  // ---------------------------------------------------------------
+  const btnSearchToggle = document.getElementById('btnSearchToggle');
+  const searchBar = document.getElementById('searchBar');
+  const searchInput = document.getElementById('searchInput');
+  const btnSearchClear = document.getElementById('btnSearchClear');
+  const searchNoResult = document.getElementById('searchNoResult');
+  let currentSearchQuery = '';
+
+  // BUG FIX: search used to only ever match posts that happened to already
+  // be loaded into the feed (the newest FEED_PAGE_SIZE, plus whatever the
+  // "আরও পোস্ট দেখুন" button had pulled in). A post from further back in
+  // history looked to the user like it simply didn't exist. Now, when a
+  // search comes up empty against what's loaded and older posts are known
+  // to exist, it automatically pages further back in the background (the
+  // same one-time reads "আরও পোস্ট দেখুন" already uses) until it finds a
+  // match, runs out of posts, or hits a safety cap — instead of requiring
+  // the user to manually click "আরও পোস্ট দেখুন" over and over while
+  // guessing whether the post they want is further down.
+  const MAX_AUTO_SEARCH_PAGES = 10; // caps background paging at ~200 extra posts per search, so a rare/non-existent term doesn't quietly read the whole collection
+  let searchLoadToken = 0; // bumped whenever the query changes, so a stale in-flight page chain stops instead of overwriting a newer search's results
+
+  function applySearchFilter() {
+    const qStr = currentSearchQuery.trim().toLowerCase();
+    searchLoadToken++;
+    const myToken = searchLoadToken;
+    const ids = Object.keys(postNodes);
+    if (!qStr || ids.length === 0) {
+      ids.forEach((id) => { postNodes[id].style.display = ''; });
+      searchNoResult.style.display = 'none';
+      btnLoadMorePosts.style.display = feedMayHaveMore ? 'block' : 'none';
+      return;
+    }
+    const anyMatch = filterLoadedPostsBySearch(qStr);
+    btnLoadMorePosts.style.display = 'none'; // pagination doesn't make sense while filtering loaded posts
+    if (anyMatch) {
+      searchNoResult.style.display = 'none';
+      return;
+    }
+    if (feedMayHaveMore) {
+      searchNoResult.textContent = 'খোঁজা হচ্ছে...';
+      searchNoResult.style.display = 'block';
+      autoLoadForSearch(myToken, qStr, 0);
+    } else {
+      searchNoResult.textContent = 'কোনো পোস্ট পাওয়া যায়নি।';
+      searchNoResult.style.display = 'block';
+    }
+  }
+
+  // Shows/hides currently-loaded posts by match, without touching the
+  // search token or triggering another auto-load chain — used both by
+  // applySearchFilter itself and by each step of the auto-load loop below.
+  function filterLoadedPostsBySearch(qStr) {
+    let anyMatch = false;
+    Object.keys(postNodes).forEach((postId) => {
+      const node = postNodes[postId];
+      const data = postDataStore[postId] || {};
+      const hay = ((data.authorName || '') + ' ' + (data.text || '')).toLowerCase();
+      const match = hay.includes(qStr);
+      node.style.display = match ? '' : 'none';
+      if (match) anyMatch = true;
+    });
+    return anyMatch;
+  }
+
+  async function autoLoadForSearch(token, qStr, pageCount) {
+    if (token !== searchLoadToken || !feedMayHaveMore || pageCount >= MAX_AUTO_SEARCH_PAGES) {
+      if (token === searchLoadToken) searchNoResult.textContent = 'কোনো পোস্ট পাওয়া যায়নি।';
+      return;
+    }
+    try {
+      await fetchNextPostsPage();
+    } catch (err) {
+      console.error('Search auto-load error:', err.code, err.message);
+      if (token === searchLoadToken) searchNoResult.textContent = 'কোনো পোস্ট পাওয়া যায়নি।';
+      return;
+    }
+    if (token !== searchLoadToken) return; // a newer search took over while this page was in flight
+    if (filterLoadedPostsBySearch(qStr)) {
+      searchNoResult.style.display = 'none';
+      return;
+    }
+    autoLoadForSearch(token, qStr, pageCount + 1);
+  }
+
+  btnSearchToggle.addEventListener('click', () => {
+    searchBar.classList.toggle('show');
+    if (searchBar.classList.contains('show')) {
+      searchInput.focus();
+    } else {
+      searchInput.value = '';
+      currentSearchQuery = '';
+      applySearchFilter();
+    }
+  });
+  searchInput.addEventListener('input', () => {
+    currentSearchQuery = searchInput.value;
+    applySearchFilter();
+  });
+  btnSearchClear.addEventListener('click', () => {
+    searchInput.value = '';
+    currentSearchQuery = '';
+    applySearchFilter();
+    searchInput.focus();
+  });
+
+  // ---------------------------------------------------------------
+  // Feed pagination: only the newest FEED_PAGE_SIZE posts are kept
+  // "live" (realtime updates for likes/comments). Without this, every
+  // login downloaded the entire posts collection — fine with a handful
+  // of posts, but it grows the read cost on every single login as the
+  // app gets more posts over time. Older posts are fetched in batches
+  // on demand via the "আরও পোস্ট দেখুন" button (one-time reads, not
+  // realtime — a fair tradeoff for posts far down the feed).
+  // ---------------------------------------------------------------
+  const FEED_PAGE_SIZE = 20;
+  const btnLoadMorePosts = document.getElementById('btnLoadMorePosts');
+  let oldestLiveFeedDoc = null; // last doc in the live (onSnapshot) window
+  let feedMayHaveMore = false;
+
+  function startFeedListener() {
+    // Clean up any previous session's feed state first. Without this, logging
+    // out and back in left the old DOM nodes + listeners behind, and the new
+    // listener's initial snapshot (which reports every post as 'added') would
+    // render a second copy of every post on top of them.
+    if (unsubscribeFeed) { unsubscribeFeed(); unsubscribeFeed = null; }
+    Object.keys(commentUnsubscribers).forEach((id) => {
+      commentUnsubscribers[id]();
+      delete commentUnsubscribers[id];
+    });
+    Object.keys(postNodes).forEach((id) => delete postNodes[id]);
+    Object.keys(postDataStore).forEach((id) => delete postDataStore[id]);
+    feedContainer.innerHTML = '';
+    feedContainer.appendChild(feedEmpty);
+    searchBar.classList.remove('show');
+    searchInput.value = '';
+    currentSearchQuery = '';
+    searchNoResult.style.display = 'none';
+    oldestLiveFeedDoc = null;
+    feedMayHaveMore = false;
+    btnLoadMorePosts.style.display = 'none';
+
+    const q = query(collection(db, 'posts'), orderBy('createdAt', 'desc'), limit(FEED_PAGE_SIZE));
+    unsubscribeFeed = onSnapshot(q, (snapshot) => {
+      // Patch the DOM incrementally instead of wiping/rebuilding the whole feed
+      // on every change. A full rebuild on every like/comment used to close any
+      // open comment box, erase text someone was mid-typing, and restart any
+      // playing video for every viewer, even if the change was on a different post.
+      snapshot.docChanges().forEach((change) => {
+        const postId = change.doc.id;
+        const data = change.doc.data();
+
+        if (change.type === 'removed') {
+          // BUG FIX: with a limit()-based live query, Firestore fires
+          // 'removed' both when a post is genuinely deleted AND when it
+          // simply falls out of the top-N window because a newer post
+          // pushed it out (it still exists further down). Treating both
+          // cases as "delete the DOM node" made already-visible posts
+          // vanish from the feed the instant someone else posted. Confirm
+          // real deletion first; if the post still exists, leave it be —
+          // it just becomes a normal already-loaded post outside the live
+          // window, same as one pulled in via "আরও পোস্ট দেখুন".
+          getDoc(doc(db, 'posts', postId)).then((snap) => {
+            if (snap.exists()) return; // just fell out of the window, not deleted
+            if (postNodes[postId]) {
+              postNodes[postId].remove();
+              delete postNodes[postId];
+            }
+            stopListenComments(postId);
+            delete postDataStore[postId];
+            applySearchFilter();
+          }).catch((err) => console.error('Post removal check error:', err.code, err.message));
+          return;
+        }
+
+        postDataStore[postId] = data;
+
+        if (change.type === 'added') {
+          const node = renderPost(postId, data);
+          postNodes[postId] = node;
+          const refNode = feedContainer.children[change.newIndex] || null;
+          feedContainer.insertBefore(node, refNode);
+          return;
+        }
+
+        // 'modified': update only the like/comment-count UI in place, leaving
+        // the rest of the post (open comments, typed text, video state) alone.
+        const node = postNodes[postId];
+        if (!node) return;
+        updatePostLikeUI(node, postId, data);
+        updatePostCommentCountUI(node, data);
+        updatePostContentUI(node, postId, data);
+
+        // Position may have shifted (createdAt changes aren't expected here,
+        // but keep order correct just in case).
+        if (change.newIndex !== change.oldIndex) {
+          const refNode = feedContainer.children[change.newIndex] || null;
+          if (refNode !== node) feedContainer.insertBefore(node, refNode);
+        }
+      });
+
+      // Track the cursor to page onward from, and whether there's
+      // probably more beyond this live window (a full page suggests yes).
+      if (snapshot.docs.length > 0) {
+        oldestLiveFeedDoc = snapshot.docs[snapshot.docs.length - 1];
+      }
+      feedMayHaveMore = snapshot.docs.length >= FEED_PAGE_SIZE;
+      btnLoadMorePosts.style.display = (feedMayHaveMore && !currentSearchQuery) ? 'block' : 'none';
+
+      const hasPosts = Object.keys(postNodes).length > 0;
+      feedEmpty.style.display = hasPosts ? 'none' : 'block';
+      if (!hasPosts && !feedContainer.contains(feedEmpty)) {
+        feedContainer.appendChild(feedEmpty);
+      }
+      applySearchFilter();
+    }, (err) => {
+      console.error('Feed error:', err.code, err.message);
+    });
+  }
+
+  // Fetches and renders the next page of older posts. Shared by the manual
+  // "আরও পোস্ট দেখুন" button and the search auto-loader above — both just
+  // page through the same cursor, they only differ in what UI feedback
+  // they show while doing it.
+  async function fetchNextPostsPage() {
+    if (!oldestLiveFeedDoc || !feedMayHaveMore) return;
+    const moreQ = query(
+      collection(db, 'posts'),
+      orderBy('createdAt', 'desc'),
+      startAfter(oldestLiveFeedDoc),
+      limit(FEED_PAGE_SIZE)
+    );
+    const moreSnap = await getDocs(moreQ);
+    moreSnap.forEach((docSnap) => {
+      const postId = docSnap.id;
+      if (postNodes[postId]) return; // already showing (rare overlap)
+      const data = docSnap.data();
+      postDataStore[postId] = data;
+      const node = renderPost(postId, data);
+      postNodes[postId] = node;
+      feedContainer.appendChild(node); // older posts go at the end
+    });
+    if (moreSnap.docs.length > 0) {
+      oldestLiveFeedDoc = moreSnap.docs[moreSnap.docs.length - 1];
+    }
+    feedMayHaveMore = moreSnap.docs.length >= FEED_PAGE_SIZE;
+  }
+
+  async function loadMorePosts() {
+    if (!oldestLiveFeedDoc || !feedMayHaveMore) return;
+    btnLoadMorePosts.disabled = true;
+    btnLoadMorePosts.textContent = 'লোড হচ্ছে...';
+    try {
+      await fetchNextPostsPage();
+      btnLoadMorePosts.style.display = (feedMayHaveMore && !currentSearchQuery) ? 'block' : 'none';
+      applySearchFilter();
+    } catch (err) {
+      console.error('Load more posts error:', err.code, err.message);
+      alert('আরও পোস্ট লোড করতে সমস্যা হয়েছে।');
+    } finally {
+      btnLoadMorePosts.disabled = false;
+      btnLoadMorePosts.textContent = 'আরও পোস্ট দেখুন';
+    }
+  }
+  btnLoadMorePosts.addEventListener('click', loadMorePosts);
+
+  function updatePostLikeUI(node, postId, data) {
+    const likeBtn = node.querySelector('.like-btn');
+    if (!likeBtn) return;
+    const liked = currentUser && Array.isArray(data.likedBy) && data.likedBy.includes(currentUser.uid);
+    const likeCount = Array.isArray(data.likedBy) ? data.likedBy.length : 0;
+    likeBtn.className = 'like-btn' + (liked ? ' liked' : '');
+    likeBtn.textContent = '👍 লাইক' + (likeCount ? ' (' + likeCount + ')' : '');
+  }
+
+  function updatePostCommentCountUI(node, data) {
+    const commentToggle = node.querySelector('.comment-toggle');
+    if (!commentToggle) return;
+    commentToggle.textContent = '💬 কমেন্ট' + (data.commentsCount ? ' (' + data.commentsCount + ')' : '');
+  }
+
+  // Reflects a post text edit into an already-rendered feed card: updates
+  // the visible text, exits edit mode (closing the textarea if it was
+  // open), and adds the "এডিট করা হয়েছে" label. Fired on every 'modified'
+  // change, not just edits, so it also has to be a correct no-op when the
+  // change was actually a like/comment (same text, same editedAt).
+  function updatePostContentUI(node, postId, data) {
+    const contentEl = node.querySelector('#post-content-' + postId);
+    const editForm = node.querySelector('#post-edit-form-' + postId);
+    const metaEl = node.querySelector('#post-meta-' + postId);
+    if (contentEl) {
+      contentEl.textContent = data.text || '';
+      contentEl.style.display = data.text ? '' : 'none';
+    }
+    if (editForm) editForm.style.display = 'none';
+    if (metaEl) {
+      metaEl.innerHTML = timeAgo(data.createdAt) + (data.editedAt ? ' · <span class="post-edited-label">এডিট করা হয়েছে</span>' : '');
+    }
+  }
+
+  function timeAgo(ts) {
+    if (!ts || !ts.toDate) return 'এইমাত্র';
+    const diffMs = Date.now() - ts.toDate().getTime();
+    const mins = Math.floor(diffMs / 60000);
+    if (mins < 1) return 'এইমাত্র';
+    if (mins < 60) return mins + ' মিনিট আগে';
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return hrs + ' ঘন্টা আগে';
+    const days = Math.floor(hrs / 24);
+    return days + ' দিন আগে';
+  }
+
+  function renderPost(postId, data) {
+    const wrap = document.createElement('div');
+    wrap.className = 'feed-post';
+
+    const liked = currentUser && Array.isArray(data.likedBy) && data.likedBy.includes(currentUser.uid);
+    const likeCount = Array.isArray(data.likedBy) ? data.likedBy.length : 0;
+
+    wrap.innerHTML = `
+      <div class="post-header clickable">
+        <div class="avatar">${avatarInner(data.authorName, data.authorPhotoURL)}</div>
+        <div class="user-info">
+          <h4>${escapeHtml(data.authorName || 'ব্যবহারকারী')}</h4>
+          <p id="post-meta-${postId}">${timeAgo(data.createdAt)}${data.editedAt ? ' · <span class="post-edited-label">এডিট করা হয়েছে</span>' : ''}</p>
+        </div>
+      </div>
+      <div class="post-content" id="post-content-${postId}" style="${data.text ? '' : 'display:none;'}">${escapeHtml(data.text || '')}</div>
+      <div class="post-edit-form" id="post-edit-form-${postId}" style="display:none; padding:0 15px 10px;">
+        <textarea rows="2" maxlength="5000"></textarea>
+        <div class="post-edit-actions">
+          <button type="button" class="post-edit-save">সেভ করুন</button>
+          <button type="button" class="post-edit-cancel">বাতিল</button>
+        </div>
+      </div>
+      ${data.mediaURL ? `<div class="post-media">${
+          data.mediaType === 'video'
+            ? `<video src="${escapeAttr(data.mediaURL)}" controls playsinline></video>`
+            : `<img src="${escapeAttr(data.mediaURL)}" alt="post media">`
+        }</div>` : ''}
+      <div class="post-footer">
+        <div class="like-btn ${liked ? 'liked' : ''}">👍 লাইক${likeCount ? ' (' + likeCount + ')' : ''}</div>
+        <div class="comment-toggle">💬 কমেন্ট${data.commentsCount ? ' (' + data.commentsCount + ')' : ''}</div>
+        <div class="share-btn">↗️ শেয়ার</div>
+        ${currentUser && data.authorUid === currentUser.uid ? '<div class="edit-btn">✏️ এডিট</div>' : ''}
+        ${currentUser && data.authorUid === currentUser.uid ? '<div class="delete-btn">🗑️ ডিলিট</div>' : ''}
+        ${currentUser && data.authorUid !== currentUser.uid ? '<div class="report-btn">🚩 রিপোর্ট</div>' : ''}
+      </div>
+      <div class="comments-section" id="comments-${postId}">
+        <div class="comments-list" id="comments-list-${postId}"></div>
+        <div class="comment-input-row">
+          <input type="text" placeholder="একটি কমেন্ট লিখুন..." id="comment-input-${postId}" maxlength="1000">
+          <button type="button" id="comment-send-${postId}">পাঠান</button>
+        </div>
+      </div>
+    `;
+
+    const postHeader = wrap.querySelector('.post-header');
+    postHeader.addEventListener('click', () => {
+      if (!data.authorUid) return;
+      if (currentUser && data.authorUid === currentUser.uid) {
+        showView('profile');
+        renderProfileView();
+      } else {
+        openUserProfile(data.authorUid);
+      }
+    });
+
+    const likeBtn = wrap.querySelector('.like-btn');
+    likeBtn.addEventListener('click', async () => {
+      if (!currentUser) return;
+      const postRef = doc(db, 'posts', postId);
+      const currentlyLiked = likeBtn.classList.contains('liked');
+      try {
+        if (currentlyLiked) {
+          await updateDoc(postRef, { likedBy: arrayRemove(currentUser.uid) });
+        } else {
+          await updateDoc(postRef, { likedBy: arrayUnion(currentUser.uid) });
+          createNotification(data.authorUid, 'like', { postId });
+        }
+      } catch (err) {
+        console.error('Like error:', err.code, err.message);
+      }
+    });
+
+    const commentToggle = wrap.querySelector('.comment-toggle');
+    const commentsSection = wrap.querySelector('.comments-section');
+    commentToggle.addEventListener('click', () => {
+      commentsSection.classList.toggle('open');
+      if (commentsSection.classList.contains('open')) {
+        listenComments(postId);
+      } else {
+        stopListenComments(postId);
+      }
+    });
+
+    const shareBtn = wrap.querySelector('.share-btn');
+    shareBtn.addEventListener('click', async () => {
+      const shareText = (data.authorName || 'ব্যবহারকারী') + ' এর পোস্ট: ' +
+        (data.text || (data.mediaType === 'video' ? '🎥 ভিডিও' : data.mediaType === 'image' ? '📷 ছবি' : ''));
+      const shareUrl = window.location.href.split('#')[0] + '#post-' + postId;
+      try {
+        if (navigator.share) {
+          // Native share sheet on mobile — user picks WhatsApp, Messenger, etc.
+          await navigator.share({ title: 'Z-Book', text: shareText, url: shareUrl });
+        } else if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(shareText + '\n' + shareUrl);
+          alert('পোস্টের লিংক কপি হয়েছে। এখন যেকোনো জায়গায় পেস্ট করে শেয়ার করতে পারবেন।');
+        } else {
+          // Very old browser with neither API: fall back to showing it so the user can copy manually
+          window.prompt('কপি করতে Ctrl+C চাপুন:', shareText + ' ' + shareUrl);
+        }
+      } catch (err) {
+        // AbortError just means the user closed the native share sheet without picking anything
+        if (err.name !== 'AbortError') {
+          console.error('Share error:', err);
+          alert('শেয়ার করতে সমস্যা হয়েছে।');
+        }
+      }
+    });
+
+    const reportBtn = wrap.querySelector('.report-btn');
+    if (reportBtn) {
+      reportBtn.addEventListener('click', () => openReportModal(postId, data.authorUid));
+    }
+
+    const editBtn = wrap.querySelector('.edit-btn');
+    if (editBtn) {
+      const contentEl = wrap.querySelector('#post-content-' + postId);
+      const editForm = wrap.querySelector('#post-edit-form-' + postId);
+      const textarea = editForm.querySelector('textarea');
+      const saveBtn = editForm.querySelector('.post-edit-save');
+      const cancelBtn = editForm.querySelector('.post-edit-cancel');
+
+      editBtn.addEventListener('click', () => {
+        textarea.value = postDataStore[postId] ? (postDataStore[postId].text || '') : (data.text || '');
+        contentEl.style.display = 'none';
+        editForm.style.display = 'block';
+        textarea.focus();
+      });
+      cancelBtn.addEventListener('click', () => {
+        editForm.style.display = 'none';
+        contentEl.style.display = contentEl.textContent ? '' : 'none';
+      });
+      saveBtn.addEventListener('click', async () => {
+        const newText = textarea.value.trim();
+        if (!newText && !data.mediaURL) {
+          alert('পোস্টের লেখা খালি রাখা যাবে না।');
+          return;
+        }
+        saveBtn.disabled = true;
+        try {
+          await updateDoc(doc(db, 'posts', postId), { text: newText, editedAt: serverTimestamp() });
+          // The feed's own onSnapshot listener fires a 'modified' change
+          // right after this and calls updatePostContentUI, which hides
+          // the form and fills in the saved text — no DOM touch needed here.
+        } catch (err) {
+          console.error('Edit post error:', err.code, err.message);
+          alert('পোস্ট এডিট করতে সমস্যা হয়েছে: ' + (err.code || err.message));
+        } finally {
+          saveBtn.disabled = false;
+        }
+      });
+    }
+
+    const deleteBtn = wrap.querySelector('.delete-btn');
+    if (deleteBtn) {
+      deleteBtn.addEventListener('click', async () => {
+        if (!confirm('আপনি কি নিশ্চিত এই পোস্টটি ডিলিট করতে চান?')) return;
+        deleteBtn.textContent = 'ডিলিট হচ্ছে...';
+        try {
+          // Delete comments first, while the post doc still exists (the
+          // security rule for deleting a comment needs to look up the
+          // parent post to confirm the requester owns it).
+          await deleteCollectionDocs(collection(db, 'posts', postId, 'comments'));
+          await deleteDoc(doc(db, 'posts', postId));
+          if (data.mediaURL) {
+            try { await deleteObject(ref(storage, data.mediaURL)); }
+            catch (e) { /* file already gone, or URL wasn't a Storage path — safe to ignore */ }
+          }
+        } catch (err) {
+          console.error('Delete post error:', err.code, err.message);
+          alert('পোস্ট ডিলিট করতে সমস্যা হয়েছে: ' + (err.code || err.message));
+          deleteBtn.textContent = '🗑️ ডিলিট';
+        }
+      });
+    }
+
+    const sendBtn = wrap.querySelector('#comment-send-' + postId);
+    const input = wrap.querySelector('#comment-input-' + postId);
+    async function sendComment() {
+      const text = input.value.trim();
+      if (!text || !currentUser) return;
+      sendBtn.disabled = true;
+      try {
+        await addDoc(collection(db, 'posts', postId, 'comments'), {
+          text: text,
+          authorName: displayNameOf(currentUser),
+          authorPhotoURL: currentUser.photoURL || null,
+          authorUid: currentUser.uid,
+          createdAt: serverTimestamp()
+        });
+        await updateDoc(doc(db, 'posts', postId), { commentsCount: increment(1) });
+        createNotification(data.authorUid, 'comment', { postId });
+        input.value = '';
+      } catch (err) {
+        console.error('Comment error:', err.code, err.message);
+      } finally {
+        sendBtn.disabled = false;
+      }
+    }
+    sendBtn.addEventListener('click', sendComment);
+    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') sendComment(); });
+
+    return wrap;
+  }
+
+  function listenComments(postId) {
+    if (commentUnsubscribers[postId]) return; // already listening
+    const listEl = document.getElementById('comments-list-' + postId);
+    const q = query(collection(db, 'posts', postId, 'comments'), orderBy('createdAt', 'asc'));
+    commentUnsubscribers[postId] = onSnapshot(q, (snap) => {
+      if (!listEl) return;
+      listEl.innerHTML = '';
+      snap.forEach((c) => {
+        const data = c.data();
+        const item = document.createElement('div');
+        item.className = 'comment-item';
+        item.innerHTML = `
+          <div class="avatar">${avatarInner(data.authorName, data.authorPhotoURL)}</div>
+          <div class="comment-bubble"><b>${escapeHtml(data.authorName || '')}</b>${escapeHtml(data.text || '')}</div>
+        `;
+        listEl.appendChild(item);
+      });
+    });
+  }
+
+  // Closing the comment box should stop listening — otherwise every post
+  // whose comments someone opened during a session keeps a live Firestore
+  // listener running in the background for the rest of that session,
+  // burning reads on every future like/comment on posts they're not even
+  // looking at anymore.
+  function stopListenComments(postId) {
+    if (commentUnsubscribers[postId]) {
+      commentUnsubscribers[postId]();
+      delete commentUnsubscribers[postId];
+    }
+  }
+
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  // SECURITY FIX: escapeHtml() above does not escape quote characters,
+  // which is fine when inserting text between tags but NOT safe when
+  // inserting a value inside an HTML attribute like src="...". A
+  // mediaURL containing a double-quote (e.g. saved directly via the
+  // Firestore API by someone bypassing the app's own upload code) could
+  // otherwise break out of the src="" attribute and inject arbitrary
+  // HTML/JS (stored XSS) into every post/message that displays it. This
+  // escapes &, <, >, " and ' so a value is always safe inside a
+  // double-quoted attribute.
+  function escapeAttr(str) {
+    return String(str || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  // ---------------------------------------------------------------
+  // BUG FIX: deleting a post left its comments behind in Firestore
+  // forever (Firestore never cascade-deletes subcollections on its
+  // own), and deleting a group left all its messages behind the same
+  // way. Both were just growing dead weight in the database with no
+  // way to ever clean them up from the app. This deletes a
+  // subcollection's documents in batches (Firestore caps a batch at
+  // 500 writes) before the parent doc itself is deleted.
+  // ---------------------------------------------------------------
+  async function deleteCollectionDocs(colRef) {
+    const snap = await getDocs(colRef);
+    const docs = snap.docs;
+    for (let i = 0; i < docs.length; i += 450) {
+      const batch = writeBatch(db);
+      docs.slice(i, i + 450).forEach((d) => batch.delete(d.ref));
+      await batch.commit();
+    }
+  }
+
+  // ---------------------------------------------------------------
+  // Profile tab: user info + read-only list of the user's own posts
+  // ---------------------------------------------------------------
+  const btnProfileLogout = document.getElementById('btnProfileLogout');
+  btnProfileLogout.addEventListener('click', async () => {
+    await markOffline();
+    await signOut(auth);
+  });
+
+  function renderProfilePost(postId, data) {
+    const wrap = document.createElement('div');
+    wrap.className = 'feed-post';
+    const likeCount = Array.isArray(data.likedBy) ? data.likedBy.length : 0;
+    wrap.innerHTML = `
+      <div class="post-header">
+        <div class="avatar">${avatarInner(data.authorName, data.authorPhotoURL)}</div>
+        <div class="user-info">
+          <h4>${escapeHtml(data.authorName || 'ব্যবহারকারী')}</h4>
+          <p>${timeAgo(data.createdAt)}${data.editedAt ? ' · <span class="post-edited-label">এডিট করা হয়েছে</span>' : ''}</p>
+        </div>
+      </div>
+      <div class="post-content" style="${data.text ? '' : 'display:none;'}">${escapeHtml(data.text || '')}</div>
+      <div class="post-edit-form" style="display:none; padding:0 15px 10px;">
+        <textarea rows="2" maxlength="5000"></textarea>
+        <div class="post-edit-actions">
+          <button type="button" class="post-edit-save">সেভ করুন</button>
+          <button type="button" class="post-edit-cancel">বাতিল</button>
+        </div>
+      </div>
+      ${data.mediaURL ? `<div class="post-media">${
+          data.mediaType === 'video'
+            ? `<video src="${escapeAttr(data.mediaURL)}" controls playsinline></video>`
+            : `<img src="${escapeAttr(data.mediaURL)}" alt="post media">`
+        }</div>` : ''}
+      <div class="post-footer">
+        <div>👍 ${likeCount}</div>
+        <div>💬 ${data.commentsCount || 0}</div>
+        <div class="edit-btn">✏️ এডিট</div>
+        <div class="delete-btn">🗑️ ডিলিট</div>
+      </div>
+    `;
+
+    const contentEl = wrap.querySelector('.post-content');
+    const editForm = wrap.querySelector('.post-edit-form');
+    const textarea = editForm.querySelector('textarea');
+    const editBtn = wrap.querySelector('.edit-btn');
+    editBtn.addEventListener('click', () => {
+      textarea.value = data.text || '';
+      contentEl.style.display = 'none';
+      editForm.style.display = 'block';
+      textarea.focus();
+    });
+    editForm.querySelector('.post-edit-cancel').addEventListener('click', () => {
+      editForm.style.display = 'none';
+      contentEl.style.display = contentEl.textContent ? '' : 'none';
+    });
+    editForm.querySelector('.post-edit-save').addEventListener('click', async () => {
+      const newText = textarea.value.trim();
+      if (!newText && !data.mediaURL) {
+        alert('পোস্টের লেখা খালি রাখা যাবে না।');
+        return;
+      }
+      try {
+        await updateDoc(doc(db, 'posts', postId), { text: newText, editedAt: serverTimestamp() });
+        renderProfileView(); // not live-bound like the home feed, so re-render explicitly
+      } catch (err) {
+        console.error('Edit post error:', err.code, err.message);
+        alert('পোস্ট এডিট করতে সমস্যা হয়েছে: ' + (err.code || err.message));
+      }
+    });
+
+    const deleteBtn = wrap.querySelector('.delete-btn');
+    deleteBtn.addEventListener('click', async () => {
+      if (!confirm('আপনি কি নিশ্চিত এই পোস্টটি ডিলিট করতে চান?')) return;
+      deleteBtn.textContent = 'ডিলিট হচ্ছে...';
+      try {
+        // Delete comments first, while the post doc still exists (the
+        // security rule for deleting a comment needs to look up the
+        // parent post to confirm the requester owns it).
+        await deleteCollectionDocs(collection(db, 'posts', postId, 'comments'));
+        await deleteDoc(doc(db, 'posts', postId));
+        if (data.mediaURL) {
+          try { await deleteObject(ref(storage, data.mediaURL)); }
+          catch (e) { /* file already gone, or URL wasn't a Storage path — safe to ignore */ }
+        }
+        renderProfileView();
+      } catch (err) {
+        console.error('Delete post error:', err.code, err.message);
+        alert('পোস্ট ডিলিট করতে সমস্যা হয়েছে: ' + (err.code || err.message));
+        deleteBtn.textContent = '🗑️ ডিলিট';
+      }
+    });
+
+    return wrap;
+  }
+
+  // ---------------------------------------------------------------
+  // Profile: edit display name (previously there was no way to change
+  // it — the name shown everywhere was just whatever came before "@"
+  // in the user's email, permanently).
+  // ---------------------------------------------------------------
+  const btnEditName = document.getElementById('btnEditName');
+  const nameEditForm = document.getElementById('nameEditForm');
+  const nameEditInput = document.getElementById('nameEditInput');
+  const btnSaveName = document.getElementById('btnSaveName');
+  const btnCancelNameEdit = document.getElementById('btnCancelNameEdit');
+  const nameEditMsg = document.getElementById('nameEditMsg');
+
+  function setNameEditMessage(text, isError) {
+    nameEditMsg.textContent = text;
+    nameEditMsg.style.color = isError ? '#e41e3f' : '#31a24c';
+  }
+
+  btnEditName.addEventListener('click', () => {
+    nameEditInput.value = displayNameOf(currentUser);
+    setNameEditMessage('', true);
+    nameEditForm.style.display = 'block';
+    nameEditInput.focus();
+  });
+
+  btnCancelNameEdit.addEventListener('click', () => {
+    nameEditForm.style.display = 'none';
+    setNameEditMessage('', true);
+  });
+
+  btnSaveName.addEventListener('click', async () => {
+    const newName = nameEditInput.value.trim();
+    if (!newName) {
+      setNameEditMessage('নাম খালি রাখা যাবে না।', true);
+      return;
+    }
+    if (!currentUser) return;
+    btnSaveName.disabled = true;
+    btnCancelNameEdit.disabled = true;
+    setNameEditMessage('সেভ হচ্ছে...', false);
+    try {
+      await updateProfile(currentUser, { displayName: newName });
+      await setDoc(doc(db, 'users', currentUser.uid), { name: newName, updatedAt: serverTimestamp() }, { merge: true });
+      nameEditForm.style.display = 'none';
+      renderProfileView();
+    } catch (err) {
+      console.error('Update name error:', err.code, err.message);
+      setNameEditMessage('নাম পরিবর্তন করতে সমস্যা হয়েছে: ' + (err.code || err.message), true);
+    } finally {
+      btnSaveName.disabled = false;
+      btnCancelNameEdit.disabled = false;
+    }
+  });
+
+  // ---------------------------------------------------------------
+  // Profile: upload a profile picture. Stored at
+  // profile-pictures/{uid}/... in Storage (owner-only write, matching
+  // storage_rules.txt), then saved as photoURL on the Firebase Auth
+  // profile (so currentUser.photoURL is available immediately, same
+  // pattern as displayName) AND mirrored onto users/{uid}.photoURL in
+  // Firestore so other people's clients — which only ever see the
+  // Firestore doc, never our Auth object — can show it too. Like the
+  // display name, this is denormalized at write time onto posts/
+  // comments/notifications, so it won't retroactively update old ones.
+  // ---------------------------------------------------------------
+  const profilePhotoInput = document.getElementById('profilePhotoInput');
+  const profilePhotoUploadMsg = document.getElementById('profilePhotoUploadMsg');
+
+  profilePhotoInput.addEventListener('change', async () => {
+    const file = profilePhotoInput.files[0];
+    profilePhotoInput.value = '';
+    if (!file || !currentUser) return;
+    if (!file.type.startsWith('image/')) {
+      profilePhotoUploadMsg.style.color = '#e41e3f';
+      profilePhotoUploadMsg.textContent = 'শুধু ছবি ফাইল নির্বাচন করুন।';
+      return;
+    }
+    if (file.size > MAX_IMAGE_BYTES) {
+      profilePhotoUploadMsg.style.color = '#e41e3f';
+      profilePhotoUploadMsg.textContent = 'ছবিটি অনেক বড় (সর্বোচ্চ 10MB পর্যন্ত অনুমোদিত)।';
+      return;
+    }
+    const oldPhotoURL = currentUser.photoURL;
+    profilePhotoUploadMsg.style.color = '#1877f2';
+    profilePhotoUploadMsg.textContent = 'আপলোড হচ্ছে...';
+    try {
+      const path = 'profile-pictures/' + currentUser.uid + '/' + Date.now() + '_' + file.name;
+      const storageRef = ref(storage, path);
+      await uploadBytesResumable(storageRef, file);
+      const url = await getDownloadURL(storageRef);
+      await updateProfile(currentUser, { photoURL: url });
+      await setDoc(doc(db, 'users', currentUser.uid), { photoURL: url, updatedAt: serverTimestamp() }, { merge: true });
+      // Best-effort cleanup of the previous photo — safe to ignore if it
+      // fails (already gone, or wasn't a Storage URL to begin with).
+      if (oldPhotoURL) {
+        deleteObject(ref(storage, oldPhotoURL)).catch(() => {});
+      }
+      profilePhotoUploadMsg.textContent = '';
+      renderProfileView();
+    } catch (err) {
+      console.error('Profile photo upload error:', err.code, err.message);
+      profilePhotoUploadMsg.style.color = '#e41e3f';
+      profilePhotoUploadMsg.textContent = 'ছবি আপলোড করতে সমস্যা হয়েছে: ' + (err.code || err.message);
+    }
+  });
+
+  function renderProfileView() {
+    if (!currentUser) return;
+    document.getElementById('profileAvatar').innerHTML = avatarInner(displayNameOf(currentUser), currentUser.photoURL);
+    document.getElementById('profileName').textContent = displayNameOf(currentUser);
+    document.getElementById('profileEmail').textContent = currentUser.email || '';
+
+    const container = document.getElementById('profilePostsContainer');
+    container.innerHTML = '';
+    const myPosts = Object.entries(postDataStore)
+      .filter(([, d]) => d.authorUid === currentUser.uid)
+      .sort((a, b) => {
+        const ta = a[1].createdAt && a[1].createdAt.toMillis ? a[1].createdAt.toMillis() : 0;
+        const tb = b[1].createdAt && b[1].createdAt.toMillis ? b[1].createdAt.toMillis() : 0;
+        return tb - ta;
+      });
+
+    // BUG FIX: this used to `return` right here when the user had zero posts,
+    // which meant the follower/following count code below never ran for
+    // anyone who hadn't posted yet — their own profile always showed 0/0
+    // no matter how many followers they actually had. The count fetch now
+    // always runs; only the post list itself is conditional.
+    if (myPosts.length === 0) {
+      container.innerHTML = '<div class="feed-empty">এখনো কোনো পোস্ট করেননি।</div>';
+    } else {
+      myPosts.forEach(([postId, data]) => container.appendChild(renderProfilePost(postId, data)));
+    }
+
+    const myFollowersCount = document.getElementById('myFollowersCount');
+    const myFollowingCount = document.getElementById('myFollowingCount');
+    getDoc(doc(db, 'users', currentUser.uid)).then((snap) => {
+      const d = snap.exists() ? snap.data() : {};
+      myFollowersCount.textContent = Array.isArray(d.followers) ? d.followers.length : 0;
+      myFollowingCount.textContent = Array.isArray(d.following) ? d.following.length : 0;
+    }).catch((err) => console.error('Own follow counts error:', err.code, err.message));
+  }
+
+  // ---------------------------------------------------------------
+  // Follow feature: view another user's profile, see their posts,
+  // and follow/unfollow them. Two arrays are kept in sync on the
+  // users/{uid} doc: "followers" (who follows this user) and
+  // "following" (who this user follows) — updated together so a
+  // follow/unfollow is a single-direction write on each side.
+  // ---------------------------------------------------------------
+  let viewedProfileUid = null;
+
+  async function openUserProfile(uid) {
+    if (!uid) return;
+    viewedProfileUid = uid;
+    showView('user-profile');
+    await renderUserProfileView(uid);
+  }
+
+  async function renderUserProfileView(uid) {
+    const nameEl = document.getElementById('userProfileName');
+    const avatarEl = document.getElementById('userProfileAvatar');
+    const followersEl = document.getElementById('userProfileFollowersCount');
+    const followingEl = document.getElementById('userProfileFollowingCount');
+    const followBtn = document.getElementById('btnFollowToggle');
+    const postsContainer = document.getElementById('userProfilePostsContainer');
+
+    nameEl.textContent = '...';
+    avatarEl.innerHTML = avatarInner('?', null);
+    followersEl.textContent = '0';
+    followingEl.textContent = '0';
+    postsContainer.innerHTML = '<div class="feed-empty">লোড হচ্ছে...</div>';
+
+    let userData = {};
+    try {
+      const snap = await getDoc(doc(db, 'users', uid));
+      userData = snap.exists() ? snap.data() : {};
+    } catch (err) {
+      console.error('User profile load error:', err.code, err.message);
+    }
+
+    const name = userData.name || 'ব্যবহারকারী';
+    const followers = Array.isArray(userData.followers) ? userData.followers : [];
+    const following = Array.isArray(userData.following) ? userData.following : [];
+
+    nameEl.textContent = name;
+    avatarEl.innerHTML = avatarInner(name, userData.photoURL);
+    followersEl.textContent = followers.length;
+    followingEl.textContent = following.length;
+
+    const isMe = currentUser && uid === currentUser.uid;
+    const amFollowing = currentUser && followers.includes(currentUser.uid);
+    followBtn.style.display = isMe ? 'none' : 'inline-block';
+    followBtn.textContent = amFollowing ? 'ফলো করছেন ✓' : '+ ফলো করুন';
+    followBtn.className = 'btn-follow' + (amFollowing ? ' following' : '');
+    followBtn.onclick = () => toggleFollow(uid, amFollowing);
+
+    postsContainer.innerHTML = '';
+    const theirPosts = Object.entries(postDataStore)
+      .filter(([, d]) => d.authorUid === uid)
+      .sort((a, b) => {
+        const ta = a[1].createdAt && a[1].createdAt.toMillis ? a[1].createdAt.toMillis() : 0;
+        const tb = b[1].createdAt && b[1].createdAt.toMillis ? b[1].createdAt.toMillis() : 0;
+        return tb - ta;
+      });
+    if (theirPosts.length === 0) {
+      postsContainer.innerHTML = '<div class="feed-empty">এখনো কোনো পোস্ট নেই।</div>';
+      return;
+    }
+    theirPosts.forEach(([postId, data]) => {
+      const node = renderProfilePost(postId, data);
+      const del = node.querySelector('.delete-btn');
+      if (del && !isMe) del.remove(); // only the post's own author can delete it
+      const edit = node.querySelector('.edit-btn');
+      if (edit && !isMe) edit.remove(); // ...or edit it
+      postsContainer.appendChild(node);
+    });
+  }
+
+  async function toggleFollow(targetUid, currentlyFollowing) {
+    if (!currentUser || currentUser.uid === targetUid) return;
+    const followBtn = document.getElementById('btnFollowToggle');
+    followBtn.disabled = true;
+    try {
+      const targetRef = doc(db, 'users', targetUid);
+      const meRef = doc(db, 'users', currentUser.uid);
+      if (currentlyFollowing) {
+        await updateDoc(targetRef, { followers: arrayRemove(currentUser.uid) });
+        await updateDoc(meRef, { following: arrayRemove(targetUid) });
+      } else {
+        await setDoc(targetRef, { followers: arrayUnion(currentUser.uid) }, { merge: true });
+        await setDoc(meRef, { following: arrayUnion(targetUid) }, { merge: true });
+        createNotification(targetUid, 'follow');
+      }
+      await renderUserProfileView(targetUid);
+    } catch (err) {
+      console.error('Follow toggle error:', err.code, err.message);
+      alert('ফলো করতে সমস্যা হয়েছে: ' + (err.code || err.message));
+    } finally {
+      followBtn.disabled = false;
+    }
+  }
+
+  document.getElementById('btnBackFromUserProfile').addEventListener('click', () => {
+    viewedProfileUid = null;
+    showView('home');
+  });
+
+  // ---------------------------------------------------------------
+  // Notifications: created when someone likes/comments on your post,
+  // or follows you. Stored in a flat 'notifications' collection,
+  // filtered client-side by toUid (avoids needing a composite index).
+  // A notification is skipped when the actor is the same person as
+  // the recipient (liking/commenting on your own post, or the
+  // impossible case of following yourself).
+  // ---------------------------------------------------------------
+  const notifBadge = document.getElementById('notifBadge');
+  const notifList = document.getElementById('notifList');
+  let notificationsCache = []; // [{id, data}], newest first, refreshed on every snapshot
+
+  async function createNotification(toUid, type, extra) {
+    if (!currentUser || !toUid || toUid === currentUser.uid) return;
+    try {
+      await addDoc(collection(db, 'notifications'), {
+        toUid,
+        fromUid: currentUser.uid,
+        fromName: displayNameOf(currentUser),
+        fromPhotoURL: currentUser.photoURL || null,
+        type, // 'like' | 'comment' | 'follow'
+        postId: extra && extra.postId ? extra.postId : null,
+        read: false,
+        createdAt: serverTimestamp()
+      });
+    } catch (err) {
+      console.error('Create notification error:', err.code, err.message);
+    }
+  }
+
+  // ---------------------------------------------------------------
+  // Report system: any signed-in user (other than the post's own
+  // author) can flag a post with a reason. Reports go into their own
+  // Firestore collection — they are NOT readable from the app itself
+  // (see firestore.rules: allow read: if false), only from the
+  // Firebase Console. That keeps this simple (no in-app admin login
+  // to build/secure) while still giving a real place to review and
+  // act on flagged content, including 18+/nudity reports.
+  // ---------------------------------------------------------------
+  const reportOverlay = document.getElementById('reportOverlay');
+  const reportMsg = document.getElementById('reportMsg');
+  const btnSubmitReport = document.getElementById('btnSubmitReport');
+  const btnCancelReport = document.getElementById('btnCancelReport');
+  const reportReasonButtons = document.querySelectorAll('.report-reason');
+  let reportTargetPostId = null;
+  let reportTargetAuthorUid = null;
+  let selectedReportReason = null;
+
+  function openReportModal(postId, authorUid) {
+    if (!currentUser) return;
+    reportTargetPostId = postId;
+    reportTargetAuthorUid = authorUid || null;
+    selectedReportReason = null;
+    reportMsg.textContent = '';
+    btnSubmitReport.disabled = true;
+    reportReasonButtons.forEach((b) => b.classList.remove('selected'));
+    reportOverlay.classList.add('show');
+  }
+
+  reportReasonButtons.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      reportReasonButtons.forEach((b) => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      selectedReportReason = btn.dataset.reason;
+      btnSubmitReport.disabled = false;
+    });
+  });
+
+  btnCancelReport.addEventListener('click', () => {
+    reportOverlay.classList.remove('show');
+  });
+
+  btnSubmitReport.addEventListener('click', async () => {
+    if (!currentUser || !reportTargetPostId || !selectedReportReason) return;
+    btnSubmitReport.disabled = true;
+    try {
+      await addDoc(collection(db, 'reports'), {
+        postId: reportTargetPostId,
+        postAuthorUid: reportTargetAuthorUid,
+        reporterUid: currentUser.uid,
+        reason: selectedReportReason,
+        status: 'pending',
+        createdAt: serverTimestamp()
+      });
+      reportOverlay.classList.remove('show');
+      alert('রিপোর্ট করার জন্য ধন্যবাদ। আমরা এটি পর্যালোচনা করব।');
+    } catch (err) {
+      console.error('Report post error:', err.code, err.message);
+      reportMsg.textContent = 'রিপোর্ট পাঠাতে সমস্যা হয়েছে: ' + (err.code || err.message);
+      btnSubmitReport.disabled = false;
+    }
+  });
+
+  // ---------------------------------------------------------------
+  // Reels: a dedicated full-screen, swipeable, vertical video feed —
+  // separate Firestore collection ('reels') and Storage path
+  // ('reels/{uid}/...') from regular posts, since the upload flow,
+  // rendering, and moderation controls (report/consent-checkbox) are
+  // all specific to this format. Mirrors the same soft content-policy
+  // gate, report system, and escaping approach used for posts above.
+  // ---------------------------------------------------------------
+  const reelsContainer = document.getElementById('reelsContainer');
+  const reelsEmpty = document.getElementById('reelsEmpty');
+  const btnOpenReelUpload = document.getElementById('btnOpenReelUpload');
+  const reelUploadOverlay = document.getElementById('reelUploadOverlay');
+  const reelVideoInput = document.getElementById('reelVideoInput');
+  const reelVideoPreview = document.getElementById('reelVideoPreview');
+  const reelVideoPreviewEl = document.getElementById('reelVideoPreviewEl');
+  const reelCaptionInput = document.getElementById('reelCaptionInput');
+  const reelConsentCheck = document.getElementById('reelConsentCheck');
+  const reelUploadProgress = document.getElementById('reelUploadProgress');
+  const reelUploadError = document.getElementById('reelUploadError');
+  const btnCancelReelUpload = document.getElementById('btnCancelReelUpload');
+  const btnSubmitReelUpload = document.getElementById('btnSubmitReelUpload');
+
+  const reelNodes = {};      // reelId -> DOM node
+  const reelDataStore = {};  // reelId -> latest reel data
+  const reelCommentUnsub = {}; // reelId -> unsubscribe fn, only set while that reel's comment panel is open
+  let unsubscribeReels = null;
+  let selectedReelFile = null;
+  let reelIntersectionObserver = null;
+
+  function startReelsListener() {
+    if (unsubscribeReels) { unsubscribeReels(); unsubscribeReels = null; }
+    Object.keys(reelCommentUnsub).forEach((id) => { reelCommentUnsub[id](); delete reelCommentUnsub[id]; });
+    Object.keys(reelNodes).forEach((id) => delete reelNodes[id]);
+    Object.keys(reelDataStore).forEach((id) => delete reelDataStore[id]);
+    reelsContainer.innerHTML = '';
+    reelsContainer.appendChild(reelsEmpty);
+
+    if (!reelIntersectionObserver) {
+      // Autoplays whichever reel is mostly in view and pauses every other
+      // one — this is what makes scrolling feel like Reels/Shorts instead
+      // of a page of independent video players all competing for audio.
+      reelIntersectionObserver = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          const video = entry.target;
+          if (entry.isIntersecting && entry.intersectionRatio >= 0.6) {
+            video.play().catch(() => {}); // autoplay can be blocked before any user gesture; harmless if so
+          } else {
+            video.pause();
+          }
+        });
+      }, { root: reelsContainer, threshold: [0, 0.6, 1] });
+    }
+
+    const q = query(collection(db, 'reels'), orderBy('createdAt', 'desc'), limit(30));
+    unsubscribeReels = onSnapshot(q, (snapshot) => {
+      snapshot.docChanges().forEach((change) => {
+        const reelId = change.doc.id;
+        const data = change.doc.data();
+
+        if (change.type === 'removed') {
+          if (reelNodes[reelId]) {
+            const vid = reelNodes[reelId].querySelector('video');
+            if (vid && reelIntersectionObserver) reelIntersectionObserver.unobserve(vid);
+            reelNodes[reelId].remove();
+            delete reelNodes[reelId];
+          }
+          if (reelCommentUnsub[reelId]) { reelCommentUnsub[reelId](); delete reelCommentUnsub[reelId]; }
+          delete reelDataStore[reelId];
+          return;
+        }
+
+        reelDataStore[reelId] = data;
+
+        if (change.type === 'added') {
+          const node = renderReel(reelId, data);
+          reelNodes[reelId] = node;
+          const refNode = reelsContainer.children[change.newIndex] || null;
+          reelsContainer.insertBefore(node, refNode);
+          const vid = node.querySelector('video');
+          if (vid && reelIntersectionObserver) reelIntersectionObserver.observe(vid);
+          return;
+        }
+
+        // 'modified' — just refresh the like/comment-count UI in place.
+        const node = reelNodes[reelId];
+        if (!node) return;
+        updateReelLikeUI(node, data);
+        const commentCountEl = node.querySelector('.reel-comment-count');
+        if (commentCountEl) commentCountEl.textContent = data.commentsCount ? String(data.commentsCount) : '';
+      });
+
+      const hasReels = Object.keys(reelNodes).length > 0;
+      reelsEmpty.style.display = hasReels ? 'none' : 'block';
+      if (!hasReels && !reelsContainer.contains(reelsEmpty)) {
+        reelsContainer.appendChild(reelsEmpty);
+      }
+    }, (err) => {
+      console.error('Reels feed error:', err.code, err.message);
+    });
+  }
+
+  function updateReelLikeUI(node, data) {
+    const likeBtn = node.querySelector('.reel-like');
+    if (!likeBtn) return;
+    const liked = currentUser && Array.isArray(data.likedBy) && data.likedBy.includes(currentUser.uid);
+    likeBtn.classList.toggle('liked', !!liked);
+    const countEl = likeBtn.querySelector('span');
+    const likeCount = Array.isArray(data.likedBy) ? data.likedBy.length : 0;
+    if (countEl) countEl.textContent = likeCount ? String(likeCount) : '';
+  }
+
+  function renderReel(reelId, data) {
+    const item = document.createElement('div');
+    item.className = 'reel-item';
+
+    const liked = currentUser && Array.isArray(data.likedBy) && data.likedBy.includes(currentUser.uid);
+    const likeCount = Array.isArray(data.likedBy) ? data.likedBy.length : 0;
+    const isOwn = currentUser && data.authorUid === currentUser.uid;
+
+    item.innerHTML = `
+      <video src="${escapeAttr(data.mediaURL)}" loop muted playsinline></video>
+      <div class="reel-mute-btn">🔇</div>
+      <div class="reel-info">
+        <div class="reel-author">
+          <div class="avatar">${avatarInner(data.authorName, data.authorPhotoURL)}</div>
+          <span>${escapeHtml(data.authorName || 'ব্যবহারকারী')}</span>
+        </div>
+        ${data.caption ? `<div class="reel-caption">${escapeHtml(data.caption)}</div>` : ''}
+      </div>
+      <div class="reel-actions">
+        <div class="reel-like ${liked ? 'liked' : ''}">❤️<span>${likeCount ? likeCount : ''}</span></div>
+        <div class="reel-comment-toggle">💬<span class="reel-comment-count">${data.commentsCount ? data.commentsCount : ''}</span></div>
+        <div class="reel-share">↗️<span></span></div>
+        ${!isOwn ? '<div class="reel-report">🚩<span></span></div>' : ''}
+        ${isOwn ? '<div class="reel-delete">🗑️<span></span></div>' : ''}
+      </div>
+      <div class="reel-comments-panel">
+        <div class="reel-comments-header">
+          <span style="font-size:14px; font-weight:bold;">কমেন্ট</span>
+          <span class="reel-comments-close">✕</span>
+        </div>
+        <div class="reel-comments-list"></div>
+        <div class="reel-comments-input-row">
+          <input type="text" placeholder="একটি কমেন্ট লিখুন..." maxlength="1000">
+          <button type="button">পাঠান</button>
+        </div>
+      </div>
+    `;
+
+    const video = item.querySelector('video');
+    const muteBtn = item.querySelector('.reel-mute-btn');
+    video.addEventListener('click', () => {
+      if (video.paused) video.play().catch(() => {}); else video.pause();
+    });
+    muteBtn.addEventListener('click', () => {
+      video.muted = !video.muted;
+      muteBtn.textContent = video.muted ? '🔇' : '🔊';
+    });
+
+    item.querySelector('.reel-author').addEventListener('click', () => {
+      if (!data.authorUid) return;
+      if (currentUser && data.authorUid === currentUser.uid) {
+        showView('profile');
+        renderProfileView();
+      } else {
+        openUserProfile(data.authorUid);
+      }
+    });
+
+    const likeBtn = item.querySelector('.reel-like');
+    likeBtn.addEventListener('click', async () => {
+      if (!currentUser) return;
+      const reelRef = doc(db, 'reels', reelId);
+      const currentlyLiked = likeBtn.classList.contains('liked');
+      try {
+        if (currentlyLiked) {
+          await updateDoc(reelRef, { likedBy: arrayRemove(currentUser.uid) });
+        } else {
+          await updateDoc(reelRef, { likedBy: arrayUnion(currentUser.uid) });
+        }
+      } catch (err) {
+        console.error('Reel like error:', err.code, err.message);
+      }
+    });
+
+    const commentsPanel = item.querySelector('.reel-comments-panel');
+    const commentToggle = item.querySelector('.reel-comment-toggle');
+    const commentsClose = item.querySelector('.reel-comments-close');
+    const commentsList = item.querySelector('.reel-comments-list');
+    const commentInput = item.querySelector('.reel-comments-input-row input');
+    const commentSendBtn = item.querySelector('.reel-comments-input-row button');
+
+    function openReelComments() {
+      commentsPanel.classList.add('open');
+      video.pause();
+      if (reelCommentUnsub[reelId]) return; // already listening
+      const q = query(collection(db, 'reels', reelId, 'comments'), orderBy('createdAt', 'asc'));
+      reelCommentUnsub[reelId] = onSnapshot(q, (snap) => {
+        commentsList.innerHTML = '';
+        if (snap.empty) {
+          commentsList.innerHTML = '<div style="text-align:center; color:#65676b; font-size:12px; padding:12px;">এখনো কোনো কমেন্ট নেই।</div>';
+          return;
+        }
+        snap.forEach((docSnap) => {
+          const c = docSnap.data();
+          const row = document.createElement('div');
+          row.className = 'comment-item';
+          row.innerHTML = `
+            <div class="avatar">${avatarInner(c.authorName, c.authorPhotoURL)}</div>
+            <div class="comment-bubble"><b>${escapeHtml(c.authorName || 'ব্যবহারকারী')}</b>${escapeHtml(c.text || '')}</div>
+          `;
+          commentsList.appendChild(row);
+        });
+        commentsList.scrollTop = commentsList.scrollHeight;
+      }, (err) => console.error('Reel comments error:', err.code, err.message));
+    }
+    function closeReelComments() {
+      commentsPanel.classList.remove('open');
+    }
+    commentToggle.addEventListener('click', openReelComments);
+    commentsClose.addEventListener('click', closeReelComments);
+
+    async function sendReelComment() {
+      const text = commentInput.value.trim();
+      if (!text || !currentUser) return;
+      commentSendBtn.disabled = true;
+      try {
+        await addDoc(collection(db, 'reels', reelId, 'comments'), {
+          authorUid: currentUser.uid,
+          authorName: displayNameOf(currentUser),
+          authorPhotoURL: currentUser.photoURL || null,
+          text,
+          createdAt: serverTimestamp()
+        });
+        await updateDoc(doc(db, 'reels', reelId), { commentsCount: increment(1) });
+        commentInput.value = '';
+      } catch (err) {
+        console.error('Reel comment error:', err.code, err.message);
+        alert('কমেন্ট পাঠাতে সমস্যা হয়েছে: ' + (err.code || err.message));
+      } finally {
+        commentSendBtn.disabled = false;
+      }
+    }
+    commentSendBtn.addEventListener('click', sendReelComment);
+    commentInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') sendReelComment(); });
+
+    const shareBtn = item.querySelector('.reel-share');
+    shareBtn.addEventListener('click', async () => {
+      const shareText = (data.authorName || 'ব্যবহারকারী') + ' এর রিল';
+      const shareUrl = window.location.href.split('#')[0] + '#reel-' + reelId;
+      try {
+        if (navigator.share) {
+          await navigator.share({ title: 'Z-Book', text: shareText, url: shareUrl });
+        } else if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(shareText + '\n' + shareUrl);
+          alert('রিলের লিংক কপি হয়েছে।');
+        }
+      } catch (err) {
+        if (err.name !== 'AbortError') console.error('Reel share error:', err);
+      }
+    });
+
+    const reportBtn = item.querySelector('.reel-report');
+    if (reportBtn) {
+      reportBtn.addEventListener('click', () => openReportModal(reelId, data.authorUid));
+    }
+
+    const deleteBtn = item.querySelector('.reel-delete');
+    if (deleteBtn) {
+      deleteBtn.addEventListener('click', async () => {
+        if (!confirm('আপনি কি নিশ্চিত এই রিলটি ডিলিট করতে চান?')) return;
+        try {
+          await deleteCollectionDocs(collection(db, 'reels', reelId, 'comments'));
+          await deleteDoc(doc(db, 'reels', reelId));
+          if (data.mediaURL) {
+            deleteObject(ref(storage, data.mediaURL)).catch(() => {});
+          }
+        } catch (err) {
+          console.error('Delete reel error:', err.code, err.message);
+          alert('রিল ডিলিট করতে সমস্যা হয়েছে: ' + (err.code || err.message));
+        }
+      });
+    }
+
+    return item;
+  }
+
+  // --- Reel upload flow ---
+  btnOpenReelUpload.addEventListener('click', () => {
+    if (!currentUser) { alert('আগে লগইন করুন।'); return; }
+    if (!currentUser.emailVerified) {
+      alert('রিল আপলোড করার আগে আপনার ইমেইল ভেরিফাই করুন।');
+      return;
+    }
+    selectedReelFile = null;
+    reelVideoInput.value = '';
+    reelCaptionInput.value = '';
+    reelConsentCheck.checked = false;
+    reelVideoPreview.classList.remove('show');
+    reelVideoPreviewEl.src = '';
+    reelUploadError.textContent = '';
+    reelUploadProgress.style.display = 'none';
+    btnSubmitReelUpload.disabled = true;
+    reelUploadOverlay.classList.add('show');
+  });
+
+  btnCancelReelUpload.addEventListener('click', () => {
+    reelUploadOverlay.classList.remove('show');
+  });
+
+  reelVideoInput.addEventListener('change', () => {
+    const file = reelVideoInput.files[0];
+    if (!file) return;
+    if (!file.type.startsWith('video/')) {
+      alert('শুধু ভিডিও ফাইল আপলোড করা যাবে।');
+      reelVideoInput.value = '';
+      return;
+    }
+    const sizeError = validateMediaFile(file);
+    if (sizeError) {
+      alert(sizeError);
+      reelVideoInput.value = '';
+      return;
+    }
+    selectedReelFile = file;
+    reelVideoPreviewEl.src = URL.createObjectURL(file);
+    reelVideoPreview.classList.add('show');
+    btnSubmitReelUpload.disabled = false;
+  });
+
+  btnSubmitReelUpload.addEventListener('click', async () => {
+    if (!currentUser || !selectedReelFile) return;
+    // Same soft content-policy gate as photo/video posts.
+    if (!reelConsentCheck.checked) {
+      reelUploadError.textContent = 'আগে চেকবক্সে টিক দিয়ে নিশ্চিত করুন যে ভিডিওতে ১৮+ কনটেন্ট নেই।';
+      return;
+    }
+    reelUploadError.textContent = '';
+    btnSubmitReelUpload.disabled = true;
+    try {
+      reelUploadProgress.style.display = 'block';
+      reelUploadProgress.textContent = 'আপলোড হচ্ছে... 0%';
+      const path = 'reels/' + currentUser.uid + '/' + Date.now() + '_' + selectedReelFile.name;
+      const storageRef = ref(storage, path);
+      const task = uploadBytesResumable(storageRef, selectedReelFile);
+
+      const mediaURL = await new Promise((resolve, reject) => {
+        task.on('state_changed',
+          (snap) => {
+            const pct = Math.round((snap.bytesTransferred / snap.totalBytes) * 100);
+            reelUploadProgress.textContent = 'আপলোড হচ্ছে... ' + pct + '%';
+          },
+          (err) => reject(err),
+          async () => resolve(await getDownloadURL(task.snapshot.ref))
+        );
+      });
+
+      await addDoc(collection(db, 'reels'), {
+        caption: reelCaptionInput.value.trim(),
+        mediaURL,
+        authorUid: currentUser.uid,
+        authorName: displayNameOf(currentUser),
+        authorPhotoURL: currentUser.photoURL || null,
+        createdAt: serverTimestamp(),
+        likedBy: [],
+        commentsCount: 0
+      });
+
+      reelUploadOverlay.classList.remove('show');
+    } catch (err) {
+      console.error('Reel upload error:', err.code, err.message);
+      reelUploadError.textContent = 'আপলোড করতে সমস্যা হয়েছে: ' + (err.code || err.message);
+    } finally {
+      reelUploadProgress.style.display = 'none';
+      btnSubmitReelUpload.disabled = false;
+    }
+  });
+
+  function startNotificationsListener() {
+    if (unsubscribeNotifications) { unsubscribeNotifications(); unsubscribeNotifications = null; }
+    // Filtered server-side by toUid (instead of downloading every user's
+    // notifications and filtering in the browser). This is required once
+    // proper security rules are in place — rules can only allow a query
+    // like this if the query itself is already scoped to the caller.
+    // Sorted client-side afterward since a where + orderBy on a different
+    // field would need a composite index set up in the Firebase console.
+    const q = query(collection(db, 'notifications'), where('toUid', '==', currentUser.uid));
+    unsubscribeNotifications = onSnapshot(q, (snap) => {
+      if (!currentUser) return;
+      notificationsCache = [];
+      snap.forEach((docSnap) => {
+        notificationsCache.push({ id: docSnap.id, data: docSnap.data() });
+      });
+      notificationsCache.sort((a, b) => {
+        const ta = a.data.createdAt && a.data.createdAt.toMillis ? a.data.createdAt.toMillis() : 0;
+        const tb = b.data.createdAt && b.data.createdAt.toMillis ? b.data.createdAt.toMillis() : 0;
+        return tb - ta;
+      });
+      const unreadCount = notificationsCache.filter((n) => !n.data.read).length;
+      if (unreadCount > 0) {
+        notifBadge.textContent = unreadCount > 9 ? '9+' : String(unreadCount);
+        notifBadge.style.display = 'flex';
+      } else {
+        notifBadge.style.display = 'none';
+      }
+      if (document.getElementById('view-notifications').classList.contains('active')) {
+        renderNotificationsList();
+      }
+    }, (err) => console.error('Notifications listener error:', err.code, err.message));
+  }
+
+  function notifText(n) {
+    const name = escapeHtml(n.fromName || 'কেউ একজন');
+    if (n.type === 'like') return `<b>${name}</b> আপনার পোস্টে লাইক দিয়েছেন`;
+    if (n.type === 'comment') return `<b>${name}</b> আপনার পোস্টে কমেন্ট করেছেন`;
+    if (n.type === 'follow') return `<b>${name}</b> আপনাকে ফলো করা শুরু করেছেন`;
+    return `<b>${name}</b> একটি নোটিফিকেশন পাঠিয়েছেন`;
+  }
+
+  function renderNotificationsList() {
+    notifList.innerHTML = '';
+    if (notificationsCache.length === 0) {
+      notifList.innerHTML = '<li class="chat-list-empty">এখনো কোনো নোটিফিকেশন নেই।</li>';
+      return;
+    }
+    notificationsCache.forEach((n) => {
+      const li = document.createElement('li');
+      li.className = 'notif-item' + (n.data.read ? '' : ' unread');
+      li.innerHTML = `
+        <div class="avatar">${avatarInner(n.data.fromName, n.data.fromPhotoURL)}</div>
+        <div>
+          <div class="notif-text">${notifText(n.data)}</div>
+          <div class="notif-time">${timeAgo(n.data.createdAt)}</div>
+        </div>
+      `;
+      li.addEventListener('click', () => {
+        if (n.data.type === 'follow') {
+          openUserProfile(n.data.fromUid);
+        } else {
+          showView('home');
+          const node = n.data.postId ? postNodes[n.data.postId] : null;
+          if (node) {
+            node.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            node.style.outline = '2px solid #1877f2';
+            setTimeout(() => { node.style.outline = ''; }, 1500);
+          }
+        }
+      });
+      notifList.appendChild(li);
+    });
+  }
+
+  async function markAllNotificationsRead() {
+    const unread = notificationsCache.filter((n) => !n.data.read);
+    if (unread.length === 0) return;
+    try {
+      await Promise.all(unread.map((n) => updateDoc(doc(db, 'notifications', n.id), { read: true })));
+    } catch (err) {
+      console.error('Mark notifications read error:', err.code, err.message);
+    }
+  }
+
+  function openNotifications() {
+    showView('notifications');
+    renderNotificationsList();
+    markAllNotificationsRead();
+  }
+
+  document.getElementById('btnBackFromNotifications').addEventListener('click', () => showView('home'));
+
+  // ---------------------------------------------------------------
+  // Messenger: user directory (chat list) with live last-message preview
+  // ---------------------------------------------------------------
+  const chatListEl = document.getElementById('chatList');
+
+  function convIdFor(uidA, uidB) {
+    return [uidA, uidB].sort().join('_');
+  }
+
+  function startChatListListener() {
+    if (unsubscribeUsers) { unsubscribeUsers(); unsubscribeUsers = null; }
+    const q = query(collection(db, 'users'));
+    unsubscribeUsers = onSnapshot(q, (snap) => {
+      chatListEl.innerHTML = '';
+      let count = 0;
+      snap.forEach((docSnap) => {
+        const u = docSnap.data();
+        latestUsersData[u.uid] = u;
+        if (!currentUser || u.uid === currentUser.uid) return;
+        count++;
+        chatListEl.appendChild(renderChatItem(u));
+      });
+      if (count === 0) {
+        chatListEl.innerHTML = '<li class="chat-list-empty">এখনো অন্য কোনো ব্যবহারকারী নেই। আরেকজনকে অ্যাপে রেজিস্টার করতে বলুন, তাহলে এখানে দেখা যাবে।</li>';
+      }
+    }, (err) => {
+      console.error('Users list error:', err.code, err.message);
+      chatListEl.innerHTML = '<li class="chat-list-empty">চ্যাট লিস্ট লোড করতে সমস্যা হয়েছে।</li>';
+    });
+
+    // BUG FIX: the green "online" dot was only ever recalculated when a
+    // users-collection snapshot fired (i.e. when *someone's* doc changed,
+    // usually from their own heartbeat write). If a user's tab crashed or
+    // lost network without a clean logout, and nobody else's doc happened
+    // to change for a while, their dot stayed "online" indefinitely even
+    // though isUserOnline() would have said otherwise. This timer re-checks
+    // staleness on its own every 20s, independent of snapshot events.
+    if (onlineRefreshInterval) clearInterval(onlineRefreshInterval);
+    onlineRefreshInterval = setInterval(refreshOnlineIndicators, 20000);
+  }
+
+  function refreshOnlineIndicators() {
+    Object.keys(latestUsersData).forEach((uid) => {
+      const avatarEl = document.getElementById('avatar-' + uid);
+      if (!avatarEl) return;
+      const shouldShow = isUserOnline(latestUsersData[uid]);
+      let dot = avatarEl.querySelector('.online-dot');
+      if (shouldShow && !dot) {
+        dot = document.createElement('div');
+        dot.className = 'online-dot';
+        avatarEl.appendChild(dot);
+      } else if (!shouldShow && dot) {
+        dot.remove();
+      }
+    });
+  }
+
+  function isUserOnline(u) {
+    if (!u.online || !u.lastActive || !u.lastActive.toDate) return false;
+    return (Date.now() - u.lastActive.toDate().getTime()) < ONLINE_THRESHOLD_MS;
+  }
+
+  function renderChatItem(u) {
+    const li = document.createElement('li');
+    li.className = 'chat-item';
+    const name = u.name || 'ব্যবহারকারী';
+    const onlineDot = isUserOnline(u) ? '<div class="online-dot"></div>' : '';
+    li.innerHTML = `
+      <div class="avatar" id="avatar-${u.uid}">${avatarInner(name, u.photoURL)}${onlineDot}</div>
+      <div class="chat-info">
+        <h4>${escapeHtml(name)}</h4>
+        <p id="preview-${u.uid}">চ্যাট শুরু করতে ট্যাপ করুন</p>
+      </div>
+      <div style="display:flex; flex-direction:column; align-items:flex-end;">
+        <div class="chat-time" id="time-${u.uid}"></div>
+        <div class="chat-unread-badge" id="unread-${u.uid}" style="display:none;"></div>
+      </div>
+    `;
+    li.addEventListener('click', () => openConversation(u.uid, name, u.photoURL));
+
+    const convId = convIdFor(currentUser.uid, u.uid);
+    if (!convPreviewUnsub[convId]) {
+      convPreviewUnsub[convId] = onSnapshot(doc(db, 'conversations', convId), (snap) => {
+        const previewEl = document.getElementById('preview-' + u.uid);
+        const timeEl = document.getElementById('time-' + u.uid);
+        const unreadEl = document.getElementById('unread-' + u.uid);
+        if (!previewEl || !snap.exists()) return;
+        const data = snap.data();
+        const unreadCount = (data.unread && data.unread[currentUser.uid]) || 0;
+        previewEl.textContent = (data.lastSenderUid === currentUser.uid ? 'আপনি: ' : '') + (data.lastMessage || '');
+        previewEl.className = unreadCount > 0 ? 'unread-preview' : '';
+        if (timeEl) timeEl.textContent = timeAgo(data.updatedAt);
+        if (unreadEl) {
+          if (unreadCount > 0) {
+            unreadEl.textContent = unreadCount > 9 ? '9+' : String(unreadCount);
+            unreadEl.style.display = 'flex';
+          } else {
+            unreadEl.style.display = 'none';
+          }
+        }
+      }, (err) => console.error('Conversation preview error:', err.code, err.message));
+    }
+    return li;
+  }
+
+  // ---------------------------------------------------------------
+  // Messenger: open conversation + realtime messages + send message
+  // ---------------------------------------------------------------
+  const messagesContainer = document.getElementById('messagesContainer');
+  const messageInput = document.getElementById('messageInput');
+  const btnSendMessage = document.getElementById('btnSendMessage');
+  const btnBackToChatList = document.getElementById('btnBackToChatList');
+  const chatMediaInput = document.getElementById('chatMediaInput');
+  const chatMediaPreview = document.getElementById('chatMediaPreview');
+  const chatMediaPreviewInner = document.getElementById('chatMediaPreviewInner');
+  const removeChatMedia = document.getElementById('removeChatMedia');
+  const chatUploadProgress = document.getElementById('chatUploadProgress');
+  const btnVoiceRecord = document.getElementById('btnVoiceRecord');
+  const voiceRecordBar = document.getElementById('voiceRecordBar');
+  const recordTimerText = document.getElementById('recordTimerText');
+  const btnCancelRecording = document.getElementById('btnCancelRecording');
+  const btnStopRecording = document.getElementById('btnStopRecording');
+
+  // selectedChatMedia holds a pending attachment (image/video from file picker, or audio from recording)
+  // shape: { blob: File|Blob, type: 'image'|'video'|'audio', name: string }
+  let selectedChatMedia = null;
+  let mediaRecorder = null;
+  let mediaRecorderStream = null;
+  let audioChunks = [];
+  let recordSeconds = 0;
+  let recordTimerInterval = null;
+  let recordStartTime = 0;
+  let recordDiscarded = false;
+
+  function renderChatMediaPreview() {
+    chatMediaPreviewInner.innerHTML = '';
+    if (!selectedChatMedia) { chatMediaPreview.classList.remove('show'); return; }
+    const url = URL.createObjectURL(selectedChatMedia.blob);
+    if (selectedChatMedia.type === 'video') {
+      const v = document.createElement('video');
+      v.src = url; v.muted = true;
+      chatMediaPreviewInner.appendChild(v);
+    } else if (selectedChatMedia.type === 'audio') {
+      const a = document.createElement('audio');
+      a.src = url; a.controls = true;
+      chatMediaPreviewInner.appendChild(a);
+    } else {
+      const img = document.createElement('img');
+      img.src = url;
+      chatMediaPreviewInner.appendChild(img);
+    }
+    chatMediaPreview.classList.add('show');
+  }
+
+  chatMediaInput.addEventListener('change', () => {
+    const file = chatMediaInput.files[0];
+    if (!file) return;
+    if (mediaRecorder && mediaRecorder.state === 'recording') {
+      // Recording is still running in the background — if we let this photo/video
+      // through, the recording would finish later and silently overwrite it as
+      // selectedChatMedia, so the picked photo/video would just vanish unsent.
+      alert('ভয়েস রেকর্ড চলছে — আগে সেটি শেষ করুন বা বাতিল করুন।');
+      chatMediaInput.value = '';
+      return;
+    }
+    if (selectedChatMedia) {
+      // An attachment (photo/video/voice message) is already staged for sending.
+      // Previously picking a new file here silently replaced it with no warning,
+      // so the first attachment would vanish unsent without the user noticing.
+      alert('আগে বর্তমান অ্যাটাচমেন্টটি বাতিল করুন।');
+      chatMediaInput.value = '';
+      return;
+    }
+    const chatSizeError = validateMediaFile(file);
+    if (chatSizeError) {
+      alert(chatSizeError);
+      chatMediaInput.value = '';
+      return;
+    }
+    selectedChatMedia = { blob: file, type: file.type.startsWith('video/') ? 'video' : 'image', name: file.name };
+    renderChatMediaPreview();
+  });
+
+  removeChatMedia.addEventListener('click', () => {
+    selectedChatMedia = null;
+    chatMediaInput.value = '';
+    chatUploadProgress.textContent = '';
+    renderChatMediaPreview();
+  });
+
+  // ---------------------------------------------------------------
+  // Voice message recording (MediaRecorder -> uploaded like any media)
+  // ---------------------------------------------------------------
+  // ---------------------------------------------------------------
+  // BUG FIX: the recorded blob was always labeled 'audio/webm' no matter
+  // what MediaRecorder actually encoded. Chrome/Firefox do produce webm,
+  // but Safari (iOS/macOS) records audio/mp4 — mislabeling that as webm
+  // meant the voice message could fail to play back on the receiving end.
+  // Ask MediaRecorder to use whichever supported format we prefer, and
+  // always read the true mimeType/extension back off the recorder itself.
+  // ---------------------------------------------------------------
+  function pickRecorderMimeType() {
+    const candidates = ['audio/webm', 'audio/mp4', 'audio/ogg'];
+    if (!window.MediaRecorder || !MediaRecorder.isTypeSupported) return '';
+    return candidates.find((t) => MediaRecorder.isTypeSupported(t)) || '';
+  }
+  function extensionForMimeType(mime) {
+    if (mime.includes('mp4')) return 'm4a';
+    if (mime.includes('ogg')) return 'ogg';
+    return 'webm';
+  }
+
+  function formatRecordTime(sec) {
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    return m + ':' + String(s).padStart(2, '0');
+  }
+
+  async function startRecording() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      alert('এই ব্রাউজারে ভয়েস রেকর্ড করা সম্ভব নয়।');
+      return;
+    }
+    try {
+      mediaRecorderStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch (err) {
+      alert('মাইক্রোফোন ব্যবহারের অনুমতি পাওয়া যায়নি।');
+      return;
+    }
+    audioChunks = [];
+    const preferredMime = pickRecorderMimeType();
+    mediaRecorder = preferredMime ? new MediaRecorder(mediaRecorderStream, { mimeType: preferredMime }) : new MediaRecorder(mediaRecorderStream);
+    mediaRecorder.addEventListener('dataavailable', (e) => { if (e.data.size > 0) audioChunks.push(e.data); });
+    mediaRecorder.addEventListener('stop', () => {
+      mediaRecorderStream.getTracks().forEach(t => t.stop());
+      mediaRecorderStream = null;
+      const elapsedMs = Date.now() - recordStartTime;
+      if (!recordDiscarded && audioChunks.length && elapsedMs > 300) {
+        const mime = mediaRecorder.mimeType || 'audio/webm';
+        const blob = new Blob(audioChunks, { type: mime });
+        selectedChatMedia = { blob, type: 'audio', name: 'voice_' + Date.now() + '.' + extensionForMimeType(mime) };
+        renderChatMediaPreview();
+      }
+    });
+    mediaRecorder.start();
+    recordStartTime = Date.now();
+    recordDiscarded = false;
+    recordSeconds = 0;
+    recordTimerText.textContent = formatRecordTime(0);
+    voiceRecordBar.classList.add('show');
+    btnVoiceRecord.classList.add('recording');
+    btnVoiceRecord.textContent = '⏺️';
+    recordTimerInterval = setInterval(() => {
+      recordSeconds++;
+      recordTimerText.textContent = formatRecordTime(recordSeconds);
+    }, 1000);
+  }
+
+  function stopRecording(discard) {
+    if (recordTimerInterval) { clearInterval(recordTimerInterval); recordTimerInterval = null; }
+    voiceRecordBar.classList.remove('show');
+    btnVoiceRecord.classList.remove('recording');
+    btnVoiceRecord.textContent = '🎤';
+    recordDiscarded = !!discard;
+    if (discard) {
+      audioChunks = [];
+      recordSeconds = 0;
+    }
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+      mediaRecorder.stop();
+    }
+  }
+
+  btnVoiceRecord.addEventListener('click', () => {
+    if (mediaRecorder && mediaRecorder.state === 'recording') return; // already recording, use stop bar
+    if (selectedChatMedia) { alert('আগে বর্তমান অ্যাটাচমেন্টটি বাতিল করুন।'); return; }
+    startRecording();
+  });
+  btnStopRecording.addEventListener('click', () => stopRecording(false));
+  btnCancelRecording.addEventListener('click', () => stopRecording(true));
+
+  let unsubscribeConvSeen = null;
+  let peerLastReadMillis = 0;
+  let currentMessageNodes = []; // ordered rows for the open conversation, kept for the seen-indicator lookup
+
+  function openConversation(peerUid, peerName, peerPhotoURL) {
+    currentPeer = { uid: peerUid, name: peerName };
+    currentConvId = convIdFor(currentUser.uid, peerUid);
+    document.getElementById('convUserName').textContent = peerName;
+    document.getElementById('convAvatar').innerHTML = avatarInner(peerName, peerPhotoURL);
+    messageInput.value = '';
+    selectedChatMedia = null;
+    chatMediaInput.value = '';
+    renderChatMediaPreview();
+    showView('conversation');
+    listenMessages(currentConvId);
+
+    // Mark this conversation as read for me (clears my unread badge) and
+    // record when I read it, so the other side can see a "seen" mark.
+    setDoc(doc(db, 'conversations', currentConvId), {
+      [`unread.${currentUser.uid}`]: 0,
+      [`lastRead.${currentUser.uid}`]: serverTimestamp()
+    }, { merge: true }).catch((err) => console.error('Mark read error:', err.code, err.message));
+
+    if (unsubscribeConvSeen) { unsubscribeConvSeen(); unsubscribeConvSeen = null; }
+    peerLastReadMillis = 0;
+    unsubscribeConvSeen = onSnapshot(doc(db, 'conversations', currentConvId), (snap) => {
+      const data = snap.exists() ? snap.data() : {};
+      const ts = data.lastRead && data.lastRead[peerUid];
+      peerLastReadMillis = ts && ts.toMillis ? ts.toMillis() : 0;
+      updateSeenIndicator();
+    }, (err) => console.error('Conv seen listener error:', err.code, err.message));
+  }
+
+  function updateSeenIndicator() {
+    const old = messagesContainer.querySelector('.seen-label');
+    if (old) old.remove();
+    if (!peerLastReadMillis) return;
+    // Find the last message row that I sent, and show "seen" under it if
+    // the peer's last-read time is at or after that message's send time.
+    for (let i = currentMessageNodes.length - 1; i >= 0; i--) {
+      const row = currentMessageNodes[i];
+      if (row.classList.contains('own')) {
+        const msgMillis = Number(row.dataset.createdAtMillis || 0);
+        if (msgMillis && peerLastReadMillis >= msgMillis) {
+          const label = document.createElement('div');
+          label.className = 'seen-label';
+          label.textContent = 'দেখা হয়েছে ✓✓';
+          row.insertAdjacentElement('afterend', label);
+        }
+        break;
+      }
+    }
+  }
+
+  function buildMessageRow(m, msgId, convId) {
+    const row = document.createElement('div');
+    const isOwn = m.senderUid === currentUser.uid;
+    row.className = 'message-row ' + (isOwn ? 'own' : 'other');
+    row.dataset.createdAtMillis = m.createdAt && m.createdAt.toMillis ? m.createdAt.toMillis() : Date.now();
+    let bubbleHtml;
+    if (m.mediaURL) {
+      let mediaTag;
+      if (m.mediaType === 'video') {
+        mediaTag = `<video src="${escapeAttr(m.mediaURL)}" controls playsinline></video>`;
+      } else if (m.mediaType === 'audio') {
+        mediaTag = `<audio src="${escapeAttr(m.mediaURL)}" controls></audio>`;
+      } else {
+        mediaTag = `<img src="${escapeAttr(m.mediaURL)}" alt="media">`;
+      }
+      bubbleHtml = `<div class="message-bubble has-media">${mediaTag}${m.text ? `<div class="msg-media-caption">${escapeHtml(m.text)}</div>` : ''}</div>`;
+    } else {
+      bubbleHtml = `<div class="message-bubble">${escapeHtml(m.text || '')}</div>`;
+    }
+    // Only the sender can delete their own message — same rule Firestore
+    // enforces server-side, this button just gives them a way to trigger it.
+    const deleteHtml = isOwn ? '<span class="msg-delete-btn" title="মেসেজ ডিলিট করুন">🗑️</span>' : '';
+    row.innerHTML = deleteHtml + bubbleHtml;
+    if (isOwn) {
+      row.querySelector('.msg-delete-btn').addEventListener('click', () => deleteMessage(convId, msgId, m.mediaURL));
+    }
+    return row;
+  }
+
+  async function deleteMessage(convId, msgId, mediaURL) {
+    if (!confirm('মেসেজটি ডিলিট করতে চান?')) return;
+    try {
+      await deleteDoc(doc(db, 'conversations', convId, 'messages', msgId));
+      if (mediaURL) {
+        deleteObject(ref(storage, mediaURL)).catch(() => {}); // already gone is fine
+      }
+      refreshConversationPreview(convId);
+    } catch (err) {
+      console.error('Delete message error:', err.code, err.message);
+      alert('মেসেজ ডিলিট করতে সমস্যা হয়েছে: ' + (err.code || err.message));
+    }
+  }
+
+  // After a delete, the chat-list preview (lastMessage/lastSenderUid/
+  // updatedAt on the conversation doc) would otherwise keep showing
+  // whatever was last sent — including a message that no longer exists,
+  // or the wrong sender if it wasn't the last one. Recompute it from
+  // whatever message is now actually the newest.
+  async function refreshConversationPreview(convId) {
+    try {
+      const q = query(collection(db, 'conversations', convId, 'messages'), orderBy('createdAt', 'desc'), limit(1));
+      const snap = await getDocs(q);
+      if (snap.empty) {
+        await setDoc(doc(db, 'conversations', convId), { lastMessage: '', lastSenderUid: null }, { merge: true });
+      } else {
+        const d = snap.docs[0].data();
+        const previewText = d.text ? d.text : (d.mediaType === 'video' ? '🎥 ভিডিও' : d.mediaType === 'audio' ? '🎤 ভয়েস মেসেজ' : d.mediaType === 'image' ? '📷 ছবি' : '');
+        await setDoc(doc(db, 'conversations', convId), { lastMessage: previewText, lastSenderUid: d.senderUid, updatedAt: d.createdAt || serverTimestamp() }, { merge: true });
+      }
+    } catch (err) {
+      console.error('Refresh conversation preview error:', err.code, err.message);
+    }
+  }
+
+  function listenMessages(convId) {
+    if (unsubscribeMessages) { unsubscribeMessages(); unsubscribeMessages = null; }
+    messagesContainer.innerHTML = '';
+    currentMessageNodes = []; // ordered list of rendered rows for this conversation
+    const q = query(collection(db, 'conversations', convId, 'messages'), orderBy('createdAt', 'asc'));
+    unsubscribeMessages = onSnapshot(q, (snap) => {
+      // Only touch the rows that actually changed. Rebuilding the whole thread
+      // on every new message used to restart any voice message or video that
+      // was mid-playback the moment either side sent something new.
+      let appendedAny = false;
+      let peerSentNew = false;
+      snap.docChanges().forEach((change) => {
+        if (change.type === 'added') {
+          const data = change.doc.data();
+          const row = buildMessageRow(data, change.doc.id, convId);
+          const refNode = messagesContainer.children[change.newIndex] || null;
+          messagesContainer.insertBefore(row, refNode);
+          currentMessageNodes.splice(change.newIndex, 0, row);
+          appendedAny = true;
+          if (data.senderUid !== currentUser.uid) peerSentNew = true;
+        } else if (change.type === 'removed') {
+          const row = currentMessageNodes[change.oldIndex];
+          if (row) row.remove();
+          currentMessageNodes.splice(change.oldIndex, 1);
+        }
+        // 'modified' doesn't occur for messages in this app (they're never edited).
+      });
+      if (appendedAny) {
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        updateSeenIndicator();
+      }
+      if (peerSentNew) {
+        // The peer's message arrived while I'm already looking at this
+        // conversation — mark it read immediately instead of leaving a
+        // stale unread badge until I leave and reopen it.
+        setDoc(doc(db, 'conversations', convId), {
+          [`unread.${currentUser.uid}`]: 0,
+          [`lastRead.${currentUser.uid}`]: serverTimestamp()
+        }, { merge: true }).catch((err) => console.error('Mark read error:', err.code, err.message));
+      }
+    }, (err) => console.error('Messages error:', err.code, err.message));
+  }
+
+  async function sendMessage() {
+    const text = messageInput.value.trim();
+    if (!text && !selectedChatMedia) return;
+    if (!currentUser || !currentConvId || !currentPeer) return;
+
+    const mediaToSend = selectedChatMedia;
+    messageInput.value = '';
+    selectedChatMedia = null;
+    chatMediaInput.value = '';
+    renderChatMediaPreview();
+    btnSendMessage.disabled = true;
+
+    try {
+      let mediaURL = null;
+      let mediaType = null;
+
+      if (mediaToSend) {
+        mediaType = mediaToSend.type;
+        chatUploadProgress.textContent = 'আপলোড হচ্ছে... 0%';
+        const path = 'chats/' + currentConvId + '/' + Date.now() + '_' + mediaToSend.name;
+        const storageRef = ref(storage, path);
+        const task = uploadBytesResumable(storageRef, mediaToSend.blob);
+        mediaURL = await new Promise((resolve, reject) => {
+          task.on('state_changed',
+            (snap) => {
+              const pct = Math.round((snap.bytesTransferred / snap.totalBytes) * 100);
+              chatUploadProgress.textContent = 'আপলোড হচ্ছে... ' + pct + '%';
+            },
+            (err) => reject(err),
+            async () => resolve(await getDownloadURL(task.snapshot.ref))
+          );
+        });
+        chatUploadProgress.textContent = '';
+      }
+
+      const previewText = text ? text : (mediaType === 'video' ? '🎥 ভিডিও' : mediaType === 'audio' ? '🎤 ভয়েস মেসেজ' : mediaType === 'image' ? '📷 ছবি' : '');
+
+      await setDoc(doc(db, 'conversations', currentConvId), {
+        members: [currentUser.uid, currentPeer.uid],
+        lastMessage: previewText,
+        lastSenderUid: currentUser.uid,
+        updatedAt: serverTimestamp(),
+        [`unread.${currentPeer.uid}`]: increment(1)
+      }, { merge: true });
+      await addDoc(collection(db, 'conversations', currentConvId, 'messages'), {
+        text: text,
+        mediaURL: mediaURL,
+        mediaType: mediaType,
+        senderUid: currentUser.uid,
+        senderName: displayNameOf(currentUser),
+        createdAt: serverTimestamp()
+      });
+    } catch (err) {
+      console.error('Send message error:', err.code, err.message);
+      alert('মেসেজ পাঠাতে সমস্যা হয়েছে: ' + (err.code || err.message));
+      chatUploadProgress.textContent = '';
+    } finally {
+      btnSendMessage.disabled = false;
+    }
+  }
+
+  btnSendMessage.addEventListener('click', sendMessage);
+  messageInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') sendMessage(); });
+  btnBackToChatList.addEventListener('click', () => {
+    if (mediaRecorder && mediaRecorder.state === 'recording') {
+      stopRecording(true); // leaving mid-recording: stop and discard, release the mic
+    }
+    if (unsubscribeMessages) { unsubscribeMessages(); unsubscribeMessages = null; }
+    if (unsubscribeConvSeen) { unsubscribeConvSeen(); unsubscribeConvSeen = null; }
+    currentConvId = null;
+    currentPeer = null;
+    showView('chat');
+  });
+
+  // ---------------------------------------------------------------
+  // Group chat: create a group, list groups the user belongs to,
+  // and a text-only group conversation view (no media/voice yet —
+  // that's still 1-1-only, same as the rest of this messenger).
+  // ---------------------------------------------------------------
+  let unsubscribeGroups = null;
+  let unsubscribeGroupMessages = null;
+  let currentGroupId = null;
+  let currentGroupData = null;
+  const groupListEl = document.getElementById('groupList');
+  const groupSectionLabel = document.getElementById('groupSectionLabel');
+
+  function startGroupsListener() {
+    if (unsubscribeGroups) { unsubscribeGroups(); unsubscribeGroups = null; }
+    const q = query(collection(db, 'groups'), where('members', 'array-contains', currentUser.uid));
+    unsubscribeGroups = onSnapshot(q, (snap) => {
+      groupListEl.innerHTML = '';
+      const groups = [];
+      snap.forEach((docSnap) => groups.push({ id: docSnap.id, data: docSnap.data() }));
+      groups.sort((a, b) => {
+        const ta = a.data.updatedAt && a.data.updatedAt.toMillis ? a.data.updatedAt.toMillis() : 0;
+        const tb = b.data.updatedAt && b.data.updatedAt.toMillis ? b.data.updatedAt.toMillis() : 0;
+        return tb - ta;
+      });
+      groupSectionLabel.style.display = groups.length ? 'block' : 'none';
+      groups.forEach((g) => groupListEl.appendChild(renderGroupItem(g.id, g.data)));
+    }, (err) => console.error('Groups list error:', err.code, err.message));
+  }
+
+  function renderGroupItem(groupId, data) {
+    const li = document.createElement('li');
+    li.className = 'chat-item';
+    const name = data.name || 'গ্রুপ';
+    const unreadCount = (data.unread && data.unread[currentUser.uid]) || 0;
+    li.innerHTML = `
+      <div class="avatar" style="background:#42b72a;">👥</div>
+      <div class="chat-info">
+        <h4>${escapeHtml(name)}</h4>
+        <p class="${unreadCount > 0 ? 'unread-preview' : ''}">${escapeHtml(data.lastMessage || 'এখনো কোনো মেসেজ নেই')}</p>
+      </div>
+      <div style="display:flex; flex-direction:column; align-items:flex-end;">
+        <div class="chat-time">${data.updatedAt ? timeAgo(data.updatedAt) : ''}</div>
+        ${unreadCount > 0 ? `<div class="chat-unread-badge" style="display:flex;">${unreadCount > 9 ? '9+' : unreadCount}</div>` : ''}
+      </div>
+    `;
+    li.addEventListener('click', () => openGroupChat(groupId, data));
+    return li;
+  }
+
+  // --- New group creation screen ---
+  const btnNewGroup = document.getElementById('btnNewGroup');
+  const newGroupMembersList = document.getElementById('newGroupMembersList');
+  const newGroupName = document.getElementById('newGroupName');
+  const btnCreateGroup = document.getElementById('btnCreateGroup');
+  const newGroupError = document.getElementById('newGroupError');
+
+  btnNewGroup.addEventListener('click', () => {
+    newGroupName.value = '';
+    newGroupError.textContent = '';
+    newGroupMembersList.innerHTML = '';
+    const others = Object.values(latestUsersData).filter((u) => u.uid !== currentUser.uid);
+    if (others.length === 0) {
+      newGroupMembersList.innerHTML = '<li class="chat-list-empty">গ্রুপে যোগ করার মতো অন্য কোনো ব্যবহারকারী নেই।</li>';
+    } else {
+      others.forEach((u) => {
+        const li = document.createElement('li');
+        li.className = 'member-check-item';
+        const name = u.name || 'ব্যবহারকারী';
+        // SECURITY FIX: this was using escapeHtml() inside an HTML
+        // attribute (data-name="..."). escapeHtml() only escapes &, <, >
+        // — it does NOT escape quote characters, so a name containing a
+        // double-quote could break out of the attribute and inject
+        // arbitrary HTML/JS. escapeAttr() is the one safe for attribute
+        // contexts (same reasoning as mediaURL/photoURL elsewhere).
+        li.innerHTML = `
+          <input type="checkbox" value="${u.uid}" data-name="${escapeAttr(name)}">
+          <div class="avatar" style="width:34px;height:34px;font-size:13px;">${avatarInner(name, u.photoURL)}</div>
+          <div>${escapeHtml(name)}</div>
+        `;
+        li.addEventListener('click', (e) => {
+          if (e.target.tagName !== 'INPUT') {
+            const cb = li.querySelector('input');
+            cb.checked = !cb.checked;
+          }
+        });
+        newGroupMembersList.appendChild(li);
+      });
+    }
+    showView('new-group');
+  });
+
+  document.getElementById('btnBackFromNewGroup').addEventListener('click', () => showView('chat'));
+
+  btnCreateGroup.addEventListener('click', async () => {
+    const name = newGroupName.value.trim();
+    const checked = Array.from(newGroupMembersList.querySelectorAll('input[type="checkbox"]:checked'));
+    if (!name) { newGroupError.textContent = 'গ্রুপের নাম দিন।'; return; }
+    if (checked.length === 0) { newGroupError.textContent = 'কমপক্ষে একজন সদস্য নির্বাচন করুন।'; return; }
+
+    btnCreateGroup.disabled = true;
+    newGroupError.textContent = '';
+    try {
+      const memberUids = [currentUser.uid, ...checked.map((c) => c.value)];
+      const unreadInit = {};
+      memberUids.forEach((uid) => { unreadInit[uid] = 0; });
+      const groupRef = await addDoc(collection(db, 'groups'), {
+        name,
+        members: memberUids,
+        createdBy: currentUser.uid,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        lastMessage: '',
+        lastSenderName: '',
+        unread: unreadInit,
+        lastRead: {}
+      });
+      showView('chat');
+      const newSnap = await getDoc(groupRef);
+      openGroupChat(groupRef.id, newSnap.data());
+    } catch (err) {
+      console.error('Create group error:', err.code, err.message);
+      newGroupError.textContent = 'গ্রুপ তৈরি করতে সমস্যা হয়েছে: ' + (err.code || err.message);
+    } finally {
+      btnCreateGroup.disabled = false;
+    }
+  });
+
+  // --- Group conversation ---
+  const groupMessagesContainer = document.getElementById('groupMessagesContainer');
+  const groupMessageInput = document.getElementById('groupMessageInput');
+  const btnSendGroupMessage = document.getElementById('btnSendGroupMessage');
+  const groupMediaInput = document.getElementById('groupMediaInput');
+  const groupMediaPreview = document.getElementById('groupMediaPreview');
+  const groupMediaPreviewInner = document.getElementById('groupMediaPreviewInner');
+  const removeGroupMedia = document.getElementById('removeGroupMedia');
+  const groupUploadProgress = document.getElementById('groupUploadProgress');
+
+  const btnGroupVoiceRecord = document.getElementById('btnGroupVoiceRecord');
+  const groupVoiceRecordBar = document.getElementById('groupVoiceRecordBar');
+  const groupRecordTimerText = document.getElementById('groupRecordTimerText');
+  const btnCancelGroupRecording = document.getElementById('btnCancelGroupRecording');
+  const btnStopGroupRecording = document.getElementById('btnStopGroupRecording');
+  // selectedGroupMedia shape matches selectedChatMedia (1-1 chat): { blob: File|Blob, type: 'image'|'video'|'audio', name: string }
+  let selectedGroupMedia = null;
+  let groupMediaRecorder = null;
+  let groupMediaRecorderStream = null;
+  let groupAudioChunks = [];
+  let groupRecordSeconds = 0;
+  let groupRecordTimerInterval = null;
+  let groupRecordStartTime = 0;
+  let groupRecordDiscarded = false;
+
+  function openGroupChat(groupId, data) {
+    currentGroupId = groupId;
+    currentGroupData = data;
+    document.getElementById('groupChatName').textContent = data.name || 'গ্রুপ';
+    const memberCount = Array.isArray(data.members) ? data.members.length : 0;
+    document.getElementById('groupChatMemberCount').textContent = memberCount + ' জন সদস্য';
+    groupMessageInput.value = '';
+    selectedGroupMedia = null;
+    groupMediaInput.value = '';
+    renderGroupMediaPreview();
+    showView('group-chat');
+    listenGroupMessages(groupId);
+
+    setDoc(doc(db, 'groups', groupId), {
+      [`unread.${currentUser.uid}`]: 0,
+      [`lastRead.${currentUser.uid}`]: serverTimestamp()
+    }, { merge: true }).catch((err) => console.error('Mark group read error:', err.code, err.message));
+  }
+
+  function renderGroupMediaPreview() {
+    groupMediaPreviewInner.innerHTML = '';
+    if (!selectedGroupMedia) { groupMediaPreview.classList.remove('show'); return; }
+    const url = URL.createObjectURL(selectedGroupMedia.blob);
+    if (selectedGroupMedia.type === 'video') {
+      const v = document.createElement('video');
+      v.src = url; v.muted = true;
+      groupMediaPreviewInner.appendChild(v);
+    } else if (selectedGroupMedia.type === 'audio') {
+      const a = document.createElement('audio');
+      a.src = url; a.controls = true;
+      groupMediaPreviewInner.appendChild(a);
+    } else {
+      const img = document.createElement('img');
+      img.src = url;
+      groupMediaPreviewInner.appendChild(img);
+    }
+    groupMediaPreview.classList.add('show');
+  }
+
+  groupMediaInput.addEventListener('change', () => {
+    const file = groupMediaInput.files[0];
+    if (!file) return;
+    if (groupMediaRecorder && groupMediaRecorder.state === 'recording') {
+      alert('ভয়েস রেকর্ড চলছে — আগে সেটি শেষ করুন বা বাতিল করুন।');
+      groupMediaInput.value = '';
+      return;
+    }
+    if (selectedGroupMedia) {
+      alert('আগে বর্তমান অ্যাটাচমেন্টটি বাতিল করুন।');
+      groupMediaInput.value = '';
+      return;
+    }
+    const groupSizeError = validateMediaFile(file);
+    if (groupSizeError) {
+      alert(groupSizeError);
+      groupMediaInput.value = '';
+      return;
+    }
+    selectedGroupMedia = { blob: file, type: file.type.startsWith('video/') ? 'video' : 'image', name: file.name };
+    renderGroupMediaPreview();
+  });
+  removeGroupMedia.addEventListener('click', () => {
+    selectedGroupMedia = null;
+    groupMediaInput.value = '';
+    groupUploadProgress.textContent = '';
+    renderGroupMediaPreview();
+  });
+
+  // ---------------------------------------------------------------
+  // Group voice messages — same MediaRecorder flow as the 1-1 chat,
+  // kept as separate state so recording in a group and recording in a
+  // DM never fight over the same mic stream or timer.
+  // ---------------------------------------------------------------
+  async function startGroupRecording() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      alert('এই ব্রাউজারে ভয়েস রেকর্ড করা সম্ভব নয়।');
+      return;
+    }
+    try {
+      groupMediaRecorderStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch (err) {
+      alert('মাইক্রোফোন ব্যবহারের অনুমতি পাওয়া যায়নি।');
+      return;
+    }
+    groupAudioChunks = [];
+    const preferredMime = pickRecorderMimeType();
+    groupMediaRecorder = preferredMime ? new MediaRecorder(groupMediaRecorderStream, { mimeType: preferredMime }) : new MediaRecorder(groupMediaRecorderStream);
+    groupMediaRecorder.addEventListener('dataavailable', (e) => { if (e.data.size > 0) groupAudioChunks.push(e.data); });
+    groupMediaRecorder.addEventListener('stop', () => {
+      groupMediaRecorderStream.getTracks().forEach(t => t.stop());
+      groupMediaRecorderStream = null;
+      const elapsedMs = Date.now() - groupRecordStartTime;
+      if (!groupRecordDiscarded && groupAudioChunks.length && elapsedMs > 300) {
+        const mime = groupMediaRecorder.mimeType || 'audio/webm';
+        const blob = new Blob(groupAudioChunks, { type: mime });
+        selectedGroupMedia = { blob, type: 'audio', name: 'voice_' + Date.now() + '.' + extensionForMimeType(mime) };
+        renderGroupMediaPreview();
+      }
+    });
+    groupMediaRecorder.start();
+    groupRecordStartTime = Date.now();
+    groupRecordDiscarded = false;
+    groupRecordSeconds = 0;
+    groupRecordTimerText.textContent = formatRecordTime(0);
+    groupVoiceRecordBar.classList.add('show');
+    btnGroupVoiceRecord.classList.add('recording');
+    btnGroupVoiceRecord.textContent = '⏺️';
+    groupRecordTimerInterval = setInterval(() => {
+      groupRecordSeconds++;
+      groupRecordTimerText.textContent = formatRecordTime(groupRecordSeconds);
+    }, 1000);
+  }
+
+  function stopGroupRecording(discard) {
+    if (groupRecordTimerInterval) { clearInterval(groupRecordTimerInterval); groupRecordTimerInterval = null; }
+    groupVoiceRecordBar.classList.remove('show');
+    btnGroupVoiceRecord.classList.remove('recording');
+    btnGroupVoiceRecord.textContent = '🎤';
+    groupRecordDiscarded = !!discard;
+    if (discard) {
+      groupAudioChunks = [];
+      groupRecordSeconds = 0;
+    }
+    if (groupMediaRecorder && groupMediaRecorder.state !== 'inactive') {
+      groupMediaRecorder.stop();
+    }
+  }
+
+  btnGroupVoiceRecord.addEventListener('click', () => {
+    if (groupMediaRecorder && groupMediaRecorder.state === 'recording') return; // already recording, use stop bar
+    if (selectedGroupMedia) { alert('আগে বর্তমান অ্যাটাচমেন্টটি বাতিল করুন।'); return; }
+    startGroupRecording();
+  });
+  btnStopGroupRecording.addEventListener('click', () => stopGroupRecording(false));
+  btnCancelGroupRecording.addEventListener('click', () => stopGroupRecording(true));
+
+  function buildGroupMessageRow(m, msgId, groupId) {
+    const row = document.createElement('div');
+    const isOwn = m.senderUid === currentUser.uid;
+    const isGroupCreator = currentGroupData && currentGroupData.createdBy === currentUser.uid;
+    row.className = 'message-row ' + (isOwn ? 'own' : 'other');
+    const senderLabel = !isOwn ? `<div class="group-msg-sender">${escapeHtml(m.senderName || 'ব্যবহারকারী')}</div>` : '';
+    let bodyHtml;
+    if (m.mediaURL) {
+      let mediaTag;
+      if (m.mediaType === 'video') {
+        mediaTag = `<video src="${escapeAttr(m.mediaURL)}" controls playsinline></video>`;
+      } else if (m.mediaType === 'audio') {
+        mediaTag = `<audio src="${escapeAttr(m.mediaURL)}" controls></audio>`;
+      } else {
+        mediaTag = `<img src="${escapeAttr(m.mediaURL)}" alt="media">`;
+      }
+      bodyHtml = `<div class="message-bubble has-media">${mediaTag}${m.text ? `<div class="msg-media-caption">${escapeHtml(m.text)}</div>` : ''}</div>`;
+    } else {
+      bodyHtml = `<div class="message-bubble">${escapeHtml(m.text || '')}</div>`;
+    }
+    // A member can delete their own message; the group's creator can also
+    // remove anyone's message (moderation) — matching the delete rule
+    // already in firestore_rules for groups/{groupId}/messages.
+    const canDelete = isOwn || isGroupCreator;
+    const deleteHtml = canDelete ? '<span class="msg-delete-btn" title="মেসেজ ডিলিট করুন">🗑️</span>' : '';
+    row.innerHTML = (isOwn ? deleteHtml + bodyHtml : senderLabel + bodyHtml + deleteHtml);
+    if (canDelete) {
+      row.querySelector('.msg-delete-btn').addEventListener('click', () => deleteGroupMessage(groupId, msgId, m.mediaURL));
+    }
+    return row;
+  }
+
+  async function deleteGroupMessage(groupId, msgId, mediaURL) {
+    if (!confirm('মেসেজটি ডিলিট করতে চান?')) return;
+    try {
+      await deleteDoc(doc(db, 'groups', groupId, 'messages', msgId));
+      if (mediaURL) {
+        deleteObject(ref(storage, mediaURL)).catch(() => {});
+      }
+      refreshGroupPreview(groupId);
+    } catch (err) {
+      console.error('Delete group message error:', err.code, err.message);
+      alert('মেসেজ ডিলিট করতে সমস্যা হয়েছে: ' + (err.code || err.message));
+    }
+  }
+
+  // Recompute the group's lastMessage/lastSenderName/updatedAt from
+  // whatever message is now actually newest, same reasoning as
+  // refreshConversationPreview for 1-1 chats.
+  async function refreshGroupPreview(groupId) {
+    try {
+      const q = query(collection(db, 'groups', groupId, 'messages'), orderBy('createdAt', 'desc'), limit(1));
+      const snap = await getDocs(q);
+      if (snap.empty) {
+        await updateDoc(doc(db, 'groups', groupId), { lastMessage: '', lastSenderName: '' });
+      } else {
+        const d = snap.docs[0].data();
+        const previewText = d.text ? d.text : (d.mediaType === 'video' ? '🎥 ভিডিও' : d.mediaType === 'audio' ? '🎤 ভয়েস মেসেজ' : d.mediaType === 'image' ? '📷 ছবি' : '');
+        await updateDoc(doc(db, 'groups', groupId), { lastMessage: previewText, lastSenderName: d.senderName || '', updatedAt: d.createdAt || serverTimestamp() });
+      }
+    } catch (err) {
+      console.error('Refresh group preview error:', err.code, err.message);
+    }
+  }
+
+  function listenGroupMessages(groupId) {
+    if (unsubscribeGroupMessages) { unsubscribeGroupMessages(); unsubscribeGroupMessages = null; }
+    groupMessagesContainer.innerHTML = '';
+    const nodes = [];
+    const q = query(collection(db, 'groups', groupId, 'messages'), orderBy('createdAt', 'asc'));
+    unsubscribeGroupMessages = onSnapshot(q, (snap) => {
+      let appendedAny = false;
+      snap.docChanges().forEach((change) => {
+        if (change.type === 'added') {
+          const row = buildGroupMessageRow(change.doc.data(), change.doc.id, groupId);
+          const refNode = groupMessagesContainer.children[change.newIndex] || null;
+          groupMessagesContainer.insertBefore(row, refNode);
+          nodes.splice(change.newIndex, 0, row);
+          appendedAny = true;
+        } else if (change.type === 'removed') {
+          const row = nodes[change.oldIndex];
+          if (row) row.remove();
+          nodes.splice(change.oldIndex, 1);
+        }
+      });
+      if (appendedAny) groupMessagesContainer.scrollTop = groupMessagesContainer.scrollHeight;
+    }, (err) => console.error('Group messages error:', err.code, err.message));
+  }
+
+  async function sendGroupMessage() {
+    const text = groupMessageInput.value.trim();
+    if (!text && !selectedGroupMedia) return;
+    if (!currentUser || !currentGroupId || !currentGroupData) return;
+
+    const mediaToSend = selectedGroupMedia;
+    groupMessageInput.value = '';
+    selectedGroupMedia = null;
+    groupMediaInput.value = '';
+    renderGroupMediaPreview();
+    btnSendGroupMessage.disabled = true;
+
+    try {
+      let mediaURL = null;
+      let mediaType = null;
+      if (mediaToSend) {
+        mediaType = mediaToSend.type;
+        groupUploadProgress.textContent = 'আপলোড হচ্ছে... 0%';
+        const path = 'group-chats/' + currentGroupId + '/' + Date.now() + '_' + mediaToSend.name;
+        const storageRef = ref(storage, path);
+        const task = uploadBytesResumable(storageRef, mediaToSend.blob);
+        mediaURL = await new Promise((resolve, reject) => {
+          task.on('state_changed',
+            (snap) => {
+              const pct = Math.round((snap.bytesTransferred / snap.totalBytes) * 100);
+              groupUploadProgress.textContent = 'আপলোড হচ্ছে... ' + pct + '%';
+            },
+            (err) => reject(err),
+            async () => resolve(await getDownloadURL(task.snapshot.ref))
+          );
+        });
+        groupUploadProgress.textContent = '';
+      }
+
+      const previewText = text ? text : (mediaType === 'video' ? '🎥 ভিডিও' : mediaType === 'audio' ? '🎤 ভয়েস মেসেজ' : mediaType === 'image' ? '📷 ছবি' : '');
+
+      await addDoc(collection(db, 'groups', currentGroupId, 'messages'), {
+        text,
+        mediaURL,
+        mediaType,
+        senderUid: currentUser.uid,
+        senderName: displayNameOf(currentUser),
+        createdAt: serverTimestamp()
+      });
+      const unreadUpdates = { updatedAt: serverTimestamp(), lastMessage: previewText, lastSenderName: displayNameOf(currentUser) };
+      (currentGroupData.members || []).forEach((uid) => {
+        if (uid !== currentUser.uid) unreadUpdates[`unread.${uid}`] = increment(1);
+      });
+      await updateDoc(doc(db, 'groups', currentGroupId), unreadUpdates);
+    } catch (err) {
+      console.error('Send group message error:', err.code, err.message);
+      alert('মেসেজ পাঠাতে সমস্যা হয়েছে: ' + (err.code || err.message));
+      groupUploadProgress.textContent = '';
+    } finally {
+      btnSendGroupMessage.disabled = false;
+    }
+  }
+
+  btnSendGroupMessage.addEventListener('click', sendGroupMessage);
+  groupMessageInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') sendGroupMessage(); });
+  document.getElementById('btnBackFromGroupChat').addEventListener('click', () => {
+    if (groupMediaRecorder && groupMediaRecorder.state === 'recording') {
+      stopGroupRecording(true); // leaving mid-recording: stop and discard, release the mic
+    }
+    if (unsubscribeGroupMessages) { unsubscribeGroupMessages(); unsubscribeGroupMessages = null; }
+    currentGroupId = null;
+    currentGroupData = null;
+    showView('chat');
+  });
+
+  // ---------------------------------------------------------------
+  // Group info: view/edit name (creator only), view members, add
+  // members, leave the group, or delete it (creator only).
+  // ---------------------------------------------------------------
+  const groupInfoName = document.getElementById('groupInfoName');
+  const groupInfoMemberCount = document.getElementById('groupInfoMemberCount');
+  const groupInfoMembersList = document.getElementById('groupInfoMembersList');
+  const btnEditGroupName = document.getElementById('btnEditGroupName');
+  const groupNameEditForm = document.getElementById('groupNameEditForm');
+  const groupNameEditInput = document.getElementById('groupNameEditInput');
+  const btnSaveGroupName = document.getElementById('btnSaveGroupName');
+  const btnCancelGroupNameEdit = document.getElementById('btnCancelGroupNameEdit');
+  const btnAddMembers = document.getElementById('btnAddMembers');
+  const btnLeaveGroup = document.getElementById('btnLeaveGroup');
+  const btnDeleteGroup = document.getElementById('btnDeleteGroup');
+
+  document.getElementById('btnGroupInfo').addEventListener('click', () => {
+    if (!currentGroupId) return;
+    renderGroupInfoView();
+  });
+
+  async function renderGroupInfoView() {
+    showView('group-info');
+    groupInfoName.textContent = '...';
+    groupInfoMemberCount.textContent = '';
+    groupInfoMembersList.innerHTML = '<li class="chat-list-empty">লোড হচ্ছে...</li>';
+    groupNameEditForm.style.display = 'none';
+
+    let data;
+    try {
+      const snap = await getDoc(doc(db, 'groups', currentGroupId));
+      if (!snap.exists()) { showView('chat'); return; }
+      data = snap.data();
+      currentGroupData = data; // keep the cached copy fresh for sendGroupMessage's unread fan-out
+    } catch (err) {
+      console.error('Group info load error:', err.code, err.message);
+      return;
+    }
+
+    const isCreator = currentUser && data.createdBy === currentUser.uid;
+    const members = Array.isArray(data.members) ? data.members : [];
+
+    groupInfoName.textContent = data.name || 'গ্রুপ';
+    groupInfoMemberCount.textContent = members.length + ' জন সদস্য';
+    btnEditGroupName.style.display = isCreator ? 'inline' : 'none';
+    btnDeleteGroup.style.display = isCreator ? 'block' : 'none';
+
+    groupInfoMembersList.innerHTML = '';
+    members.forEach((uid) => {
+      const u = latestUsersData[uid];
+      const name = (u && u.name) || (uid === currentUser.uid ? displayNameOf(currentUser) : 'ব্যবহারকারী');
+      const li = document.createElement('li');
+      li.className = 'chat-item';
+      const photoURL = (u && u.photoURL) || (uid === currentUser.uid ? currentUser.photoURL : null);
+      li.innerHTML = `
+        <div class="avatar">${avatarInner(name, photoURL)}</div>
+        <div class="chat-info">
+          <h4>${escapeHtml(name)}${uid === data.createdBy ? ' 👑' : ''}${uid === currentUser.uid ? ' (আপনি)' : ''}</h4>
+        </div>
+      `;
+      if (isCreator && uid !== currentUser.uid) {
+        const removeBtn = document.createElement('div');
+        removeBtn.textContent = '✕';
+        removeBtn.style.cssText = 'color:#e41e3f; font-weight:bold; cursor:pointer; padding:6px 10px;';
+        removeBtn.addEventListener('click', async () => {
+          if (!confirm(name + '-কে গ্রুপ থেকে বাদ দিতে চান?')) return;
+          try {
+            await updateDoc(doc(db, 'groups', currentGroupId), { members: arrayRemove(uid) });
+            renderGroupInfoView();
+          } catch (err) {
+            console.error('Remove member error:', err.code, err.message);
+            alert('বাদ দিতে সমস্যা হয়েছে: ' + (err.code || err.message));
+          }
+        });
+        li.appendChild(removeBtn);
+      }
+      groupInfoMembersList.appendChild(li);
+    });
+  }
+
+  document.getElementById('btnBackFromGroupInfo').addEventListener('click', () => showView('group-chat'));
+
+  btnEditGroupName.addEventListener('click', () => {
+    groupNameEditInput.value = groupInfoName.textContent;
+    groupNameEditForm.style.display = 'block';
+    groupNameEditInput.focus();
+  });
+  btnCancelGroupNameEdit.addEventListener('click', () => { groupNameEditForm.style.display = 'none'; });
+  btnSaveGroupName.addEventListener('click', async () => {
+    const newName = groupNameEditInput.value.trim();
+    if (!newName || !currentGroupId) return;
+    btnSaveGroupName.disabled = true;
+    try {
+      await updateDoc(doc(db, 'groups', currentGroupId), { name: newName });
+      groupNameEditForm.style.display = 'none';
+      renderGroupInfoView();
+    } catch (err) {
+      console.error('Rename group error:', err.code, err.message);
+      alert('নাম পরিবর্তন করতে সমস্যা হয়েছে: ' + (err.code || err.message));
+    } finally {
+      btnSaveGroupName.disabled = false;
+    }
+  });
+
+  btnLeaveGroup.addEventListener('click', async () => {
+    if (!currentGroupId || !currentUser) return;
+    if (!confirm('আপনি কি নিশ্চিত এই গ্রুপ ছেড়ে দিতে চান?')) return;
+    try {
+      await updateDoc(doc(db, 'groups', currentGroupId), { members: arrayRemove(currentUser.uid) });
+      if (unsubscribeGroupMessages) { unsubscribeGroupMessages(); unsubscribeGroupMessages = null; }
+      currentGroupId = null;
+      currentGroupData = null;
+      showView('chat');
+    } catch (err) {
+      console.error('Leave group error:', err.code, err.message);
+      alert('গ্রুপ ছাড়তে সমস্যা হয়েছে: ' + (err.code || err.message));
+    }
+  });
+
+  btnDeleteGroup.addEventListener('click', async () => {
+    if (!currentGroupId) return;
+    if (!confirm('আপনি কি নিশ্চিত এই গ্রুপ পুরোপুরি ডিলিট করতে চান? এটি ফিরিয়ে আনা যাবে না।')) return;
+    try {
+      // Delete messages first, while the group doc still exists (the
+      // security rule for deleting a group message needs to look up the
+      // group to confirm the requester is its creator).
+      await deleteCollectionDocs(collection(db, 'groups', currentGroupId, 'messages'));
+      await deleteDoc(doc(db, 'groups', currentGroupId));
+      if (unsubscribeGroupMessages) { unsubscribeGroupMessages(); unsubscribeGroupMessages = null; }
+      currentGroupId = null;
+      currentGroupData = null;
+      showView('chat');
+    } catch (err) {
+      console.error('Delete group error:', err.code, err.message);
+      alert('গ্রুপ ডিলিট করতে সমস্যা হয়েছে: ' + (err.code || err.message));
+    }
+  });
+
+  // --- Add members screen ---
+  const addMembersList = document.getElementById('addMembersList');
+  const btnConfirmAddMembers = document.getElementById('btnConfirmAddMembers');
+  const addMembersError = document.getElementById('addMembersError');
+
+  btnAddMembers.addEventListener('click', () => {
+    if (!currentGroupData) return;
+    addMembersError.textContent = '';
+    addMembersList.innerHTML = '';
+    const currentMembers = new Set(currentGroupData.members || []);
+    const candidates = Object.values(latestUsersData).filter((u) => !currentMembers.has(u.uid));
+    if (candidates.length === 0) {
+      addMembersList.innerHTML = '<li class="chat-list-empty">যোগ করার মতো আর কেউ নেই।</li>';
+    } else {
+      candidates.forEach((u) => {
+        const name = u.name || 'ব্যবহারকারী';
+        const li = document.createElement('li');
+        li.className = 'member-check-item';
+        li.innerHTML = `
+          <input type="checkbox" value="${u.uid}">
+          <div class="avatar" style="width:34px;height:34px;font-size:13px;">${avatarInner(name, u.photoURL)}</div>
+          <div>${escapeHtml(name)}</div>
+        `;
+        li.addEventListener('click', (e) => {
+          if (e.target.tagName !== 'INPUT') {
+            const cb = li.querySelector('input');
+            cb.checked = !cb.checked;
+          }
+        });
+        addMembersList.appendChild(li);
+      });
+    }
+    showView('add-members');
+  });
+
+  document.getElementById('btnBackFromAddMembers').addEventListener('click', () => showView('group-info'));
+
+  btnConfirmAddMembers.addEventListener('click', async () => {
+    const checked = Array.from(addMembersList.querySelectorAll('input[type="checkbox"]:checked'));
+    if (checked.length === 0) { addMembersError.textContent = 'কমপক্ষে একজন নির্বাচন করুন।'; return; }
+    btnConfirmAddMembers.disabled = true;
+    try {
+      const newUids = checked.map((c) => c.value);
+      const unreadPatch = {};
+      newUids.forEach((uid) => { unreadPatch[`unread.${uid}`] = 0; });
+      await updateDoc(doc(db, 'groups', currentGroupId), { members: arrayUnion(...newUids), ...unreadPatch });
+      showView('group-info');
+      renderGroupInfoView();
+    } catch (err) {
+      console.error('Add members error:', err.code, err.message);
+      addMembersError.textContent = 'যোগ করতে সমস্যা হয়েছে: ' + (err.code || err.message);
+    } finally {
+      btnConfirmAddMembers.disabled = false;
+    }
+  });
+
+  // --- PWA install support ---
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('service-worker.js').catch((err) => {
+        console.error('Service worker register failed:', err);
+      });
+    });
+  }
+</script>
+</body>
+</html>
