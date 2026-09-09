@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Z-Book</title>
-<link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#1877f2">
 <link rel="icon" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
@@ -721,7 +720,7 @@
   function cloudinaryResourceType(file) {
     const type = (file && file.type) || '';
     if (type.startsWith('video/')) return 'video';
-    if (type.startsWith('audio/')) return 'video'; // Cloudinary serves audio through the video endpoint
+    if (type.startsWith('audio/')) return 'audio'; // auto endpoint detects the correct Cloudinary resource type
     return 'image';
   }
 
@@ -734,7 +733,7 @@
 
   function uploadBytesResumable(storageRef, file) {
     const resourceType = cloudinaryResourceType(file);
-    const uploadUrl = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/${resourceType}/upload`;
+    const uploadUrl = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/auto/upload`;
     let progressCb = null;
 
     const promise = new Promise((resolve, reject) => {
@@ -749,7 +748,7 @@
       // clear rejection so the UI can show an error and the user can retry.
       // Video files are much bigger than images and take longer to reach
       // Cloudinary on a slow mobile connection, so they get a longer cap.
-      xhr.timeout = resourceType === 'video' ? 180000 : 60000;
+      xhr.timeout = resourceType === 'video' ? 300000 : (resourceType === 'audio' ? 120000 : 90000);
       xhr.upload.onprogress = (e) => {
         if (e.lengthComputable && progressCb) {
           progressCb({ bytesTransferred: e.loaded, totalBytes: e.total });
@@ -2991,6 +2990,10 @@
   }
 
   async function startRecording() {
+    if (!window.isSecureContext && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+      alert('ভয়েস রেকর্ড করতে HTTPS দরকার। অ্যাপটি HTTPS লিংক দিয়ে খুলুন।');
+      return;
+    }
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       alert('এই ব্রাউজারে ভয়েস রেকর্ড করা সম্ভব নয়।');
       return;
@@ -3221,9 +3224,6 @@
 
     const mediaToSend = selectedChatMedia;
     messageInput.value = '';
-    selectedChatMedia = null;
-    chatMediaInput.value = '';
-    renderChatMediaPreview();
     btnSendMessage.disabled = true;
 
     try {
@@ -3266,6 +3266,9 @@
         senderName: displayNameOf(currentUser),
         createdAt: serverTimestamp()
       });
+      selectedChatMedia = null;
+      chatMediaInput.value = '';
+      renderChatMediaPreview();
     } catch (err) {
       console.error('Send message error:', err.code, err.message);
       alert('মেসেজ পাঠাতে সমস্যা হয়েছে: ' + (err.code || err.message));
@@ -3514,6 +3517,10 @@
   // DM never fight over the same mic stream or timer.
   // ---------------------------------------------------------------
   async function startGroupRecording() {
+    if (!window.isSecureContext && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+      alert('ভয়েস রেকর্ড করতে HTTPS দরকার। অ্যাপটি HTTPS লিংক দিয়ে খুলুন।');
+      return;
+    }
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       alert('এই ব্রাউজারে ভয়েস রেকর্ড করা সম্ভব নয়।');
       return;
@@ -3672,9 +3679,6 @@
 
     const mediaToSend = selectedGroupMedia;
     groupMessageInput.value = '';
-    selectedGroupMedia = null;
-    groupMediaInput.value = '';
-    renderGroupMediaPreview();
     btnSendGroupMessage.disabled = true;
 
     try {
@@ -3709,6 +3713,9 @@
         senderName: displayNameOf(currentUser),
         createdAt: serverTimestamp()
       });
+      selectedGroupMedia = null;
+      groupMediaInput.value = '';
+      renderGroupMediaPreview();
       const unreadUpdates = { updatedAt: serverTimestamp(), lastMessage: previewText, lastSenderName: displayNameOf(currentUser) };
       (currentGroupData.members || []).forEach((uid) => {
         if (uid !== currentUser.uid) unreadUpdates[`unread.${uid}`] = increment(1);
@@ -3929,14 +3936,8 @@
     }
   });
 
-  // --- PWA install support ---
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('service-worker.js').catch((err) => {
-        console.error('Service worker register failed:', err);
-      });
-    });
-  }
+  // Service worker disabled in the single-file build so Android Download Manager
+  // does not need a separate .js file. The app works normally without offline caching.
 </script>
 </body>
 </html>
